@@ -6,6 +6,16 @@ goog.provide('derekslager.xword.Square');
 derekslager.xword.Square = function() {};
 
 /**
+ * @type {number}
+ */
+derekslager.xword.Square.prototype.row;
+
+/**
+ * @type {number}
+ */
+derekslager.xword.Square.prototype.column;
+
+/**
  * @type {string}
  */
 derekslager.xword.Square.prototype.answer;

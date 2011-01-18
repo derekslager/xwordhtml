@@ -116,6 +116,8 @@ derekslager.xword.XwordHtml.prototype.onLoadEnd = function(puzzle, e) {
                 var answer = solution[i * crossword.width + j];
                 if (answer !== '.') {
                     var square = new derekslager.xword.Square();
+                    square.row = i;
+                    square.column = j;
                     square.answer = answer;
                     crossword.squares[i][j] = square;
                 }
@@ -160,7 +162,7 @@ derekslager.xword.XwordHtml.prototype.onLoadEnd = function(puzzle, e) {
             }
         }
 
-        this.renderCrossword(puzzle, crossword);
+        this.table = this.renderCrossword(puzzle, crossword);
 
     } else {
         this.logger.warning('unexpected readyState: ' + e.target.readyState);
@@ -228,7 +230,7 @@ derekslager.xword.XwordHtml.prototype.renderCrossword = function(container, cros
     }
 
     // Track game state.
-    var game = new derekslager.xword.Game(table, crossword);
+    var game = new derekslager.xword.Game(crossword);
 
     this.handler.listen(table,
                         goog.events.EventType.CLICK,
@@ -260,6 +262,37 @@ derekslager.xword.XwordHtml.prototype.renderCrossword = function(container, cros
     return table;
 };
 
+/**
+ * @param {derekslager.xword.Square} square
+ */
+derekslager.xword.XwordHtml.prototype.getCell = function(square) {
+    return this.table.rows[square.row].cells[square.column];
+};
+
+/**
+ * @param {Element} cell
+ */
+derekslager.xword.XwordHtml.prototype.getCellValue = function(cell) {
+    return this.dom.getTextContent(cell.firstChild.nextSibling);
+};
+
+/**
+ * @param {Element} cell
+ * @param {string} value
+ */
+derekslager.xword.XwordHtml.prototype.setCellValue = function(cell, value) {
+    cell.firstChild.nextSibling.innerHTML = value;
+};
+
+/**
+ * @param {Element} cell
+ */
+derekslager.xword.XwordHtml.prototype.isCellEmpty = function(cell) {
+    var value = this.getCellValue(cell);
+    this.logger.fine('isCellEmpty: "' + value + '"');
+    return !value || value == goog.string.Unicode.NBSP;
+};
+
 derekslager.xword.XwordHtml.prototype.onCrosswordKey = function(game, e) {
     this.logger.fine('KEY (' + e.keyCode + ') on ' + e.target.nodeName);
 
@@ -268,10 +301,11 @@ derekslager.xword.XwordHtml.prototype.onCrosswordKey = function(game, e) {
     if (e.keyCode === goog.events.KeyCodes.SPACE) {
         this.beforeChange(game);
         game.changeDirection();
-    } else if (e.keyCode >= goog.events.KeyCodes.A &&
+    } else if (!e.ctrlKey && !e.altKey && !e.metaKey &&
+               e.keyCode >= goog.events.KeyCodes.A &&
                e.keyCode <= goog.events.KeyCodes.Z) {
         this.beforeChange(game);
-        game.setCellValue(game.getCurrentCell(), String.fromCharCode(e.charCode).toUpperCase());
+        this.setCellValue(this.getCell(game.getCurrentSquare()), String.fromCharCode(e.charCode).toUpperCase());
         game.moveNext();
     } else if (e.keyCode == goog.events.KeyCodes.UP) {
         this.beforeChange(game);
@@ -290,13 +324,13 @@ derekslager.xword.XwordHtml.prototype.onCrosswordKey = function(game, e) {
         game.nextWord();
     } else if (e.keyCode === goog.events.KeyCodes.DELETE) {
         this.beforeChange(game);
-        game.setCellValue(game.getCurrentCell(), goog.string.Unicode.NBSP);
+        this.setCellValue(this.getCell(game.getCurrentSquare()), goog.string.Unicode.NBSP);
     } else if (e.keyCode === goog.events.KeyCodes.BACKSPACE) {
         this.beforeChange(game);
-        if (game.isCellEmpty(game.getCurrentCell())) {
+        if (this.isCellEmpty(this.getCell(game.getCurrentSquare()))) {
             game.movePrevious();
         }
-        game.setCellValue(game.getCurrentCell(), goog.string.Unicode.NBSP);
+        this.setCellValue(this.getCell(game.getCurrentSquare()), goog.string.Unicode.NBSP);
     } else {
         changed = false;
     }
@@ -308,18 +342,32 @@ derekslager.xword.XwordHtml.prototype.onCrosswordKey = function(game, e) {
     }
 };
 
+/**
+ * @param {derekslager.xword.Game} game
+ * @return {Array.<Element>}
+ */
+derekslager.xword.XwordHtml.prototype.getCurrentWordCells = function(game) {
+    return goog.array.map(game.getCurrentWordSquares(), this.getCell, this);
+};
+
+/**
+ * @param {derekslager.xword.Game} game
+ */
 derekslager.xword.XwordHtml.prototype.beforeChange = function(game) {
     // Unhighlight the current cells.
-    goog.array.map(game.getCurrentWordCells(),
+    goog.array.map(this.getCurrentWordCells(game),
                    function(c) { c.style.backgroundColor = ''; });
 };
 
+/**
+ * @param {derekslager.xword.Game} game
+ */
 derekslager.xword.XwordHtml.prototype.update = function(game) {
-    var wordCells = game.getCurrentWordCells();
+    var wordCells = this.getCurrentWordCells(game);
     for (var i = 0; i < wordCells.length; i++) {
         wordCells[i].style.backgroundColor = '#ddd';
     }
-    game.getCurrentCell().style.backgroundColor = 'yellow';
+    this.getCell(game.getCurrentSquare()).style.backgroundColor = 'yellow';
 };
 
 derekslager.xword.XwordHtml.prototype.onCrosswordClicked = function(game, e) {
