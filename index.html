@@ -1,0 +1,21 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+
+  <head>
+    <title>Across Lite HTML</title>
+    <link rel="stylesheet" type="text/css" href="css/xwordhtml.css" />
+  </head>
+
+  <body>
+    <div id="dropzone" style="height: 200px;">
+      Drop a .PUZ file here, and I'll make you a crossword!
+    </div>
+    <script type="text/javascript" src="http://localhost:9810/compile?id=xwordhtml&amp;mode=RAW"></script>
+    <script type="text/javascript">
+      var app = new derekslager.xword.XwordHtml();
+      app.load();
+    </script>
+  </body>
+
+</html>
