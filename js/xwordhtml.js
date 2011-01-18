@@ -20,6 +20,7 @@ goog.require('goog.math.Integer');
 
 goog.require('goog.string.Unicode');
 
+goog.require('derekslager.xword.Clue');
 goog.require('derekslager.xword.Crossword');
 goog.require('derekslager.xword.Game');
 goog.require('derekslager.xword.Square');
@@ -154,10 +155,21 @@ derekslager.xword.XwordHtml.prototype.onLoadEnd = function(puzzle, e) {
                 if (!square) continue;
 
                 if (square.across) {
-                    crossword.across.push(crossword.clues[clueIndex++]);
+                    var clue = new derekslager.xword.Clue();
+                    clue.number = square.across;
+                    clue.direction = derekslager.xword.Direction.ACROSS;
+                    clue.text = crossword.clues[clueIndex++];
+                    clue.square = square;
+                    crossword.across.push(clue);
                 }
+
                 if (square.down) {
-                    crossword.down.push(crossword.clues[clueIndex++]);
+                    var clue = new derekslager.xword.Clue();
+                    clue.number = square.down;
+                    clue.direction = derekslager.xword.Direction.DOWN;
+                    clue.text = crossword.clues[clueIndex++];
+                    clue.square = square;
+                    crossword.down.push(clue);
                 }
             }
         }
@@ -184,7 +196,7 @@ derekslager.xword.XwordHtml.prototype.onDrop = function(e) {
 
     var output = [];
     for (var i = 0, file; file = files[i]; i++) {
-        var puzzle = this.dom.createDom('div', { 'class': 'puzzle' });
+        var puzzle = this.dom.createDom('div', 'puzzle');
         puzzle.appendChild(this.dom.createDom('h1', null, file.name));
 
         var reader = new FileReader();
@@ -208,7 +220,7 @@ derekslager.xword.XwordHtml.prototype.renderCrossword = function(container, cros
 
     // Build the grid.
     var table = this.dom.createTable(crossword.height, crossword.width);
-    goog.dom.classes.add(table, 'crossword');
+    goog.dom.classes.add(table, 'grid');
     table.tabIndex = -1; // make focusable so we can get key events
 
     for (var i = 0; i < crossword.squares.length; i++) {
@@ -221,8 +233,8 @@ derekslager.xword.XwordHtml.prototype.renderCrossword = function(container, cros
             if (square) {
                 var number = square.getNumber();
                 var n = number ? String(number) : goog.string.Unicode.NBSP;
-                cell.appendChild(this.dom.createDom('span', { 'class': 'n' }, n));
-                cell.appendChild(this.dom.createDom('span', { 'class': 'a' }, square.answer));
+                cell.appendChild(this.dom.createDom('span', 'n', n));
+                cell.appendChild(this.dom.createDom('span', 'a', square.answer));
             } else {
                 goog.dom.classes.add(cell, 'b');
             }
@@ -244,22 +256,50 @@ derekslager.xword.XwordHtml.prototype.renderCrossword = function(container, cros
     container.appendChild(table);
 
     // Clues.
-    var across = document.createElement('div');
-    across.appendChild(this.dom.createDom('strong', undefined, 'Across'));
+    var clues = this.dom.createDom('div', 'clues');
+
+    var across = this.dom.createDom('div', 'c across');
     for (i = 0; i < crossword.across.length; i++) {
-        across.appendChild(document.createTextNode(' ' + crossword.across[i] + ' '));
+        var clue = crossword.across[i];
+        var element = this.dom.createDom('div', null, clue.number + '. ' + clue.text);
+        this.handler.listen(element,
+                            goog.events.EventType.CLICK,
+                            goog.partial(this.onClueClicked, game, clue));
+        across.appendChild(element);
     }
 
-    var down = document.createElement('div');
-    down.appendChild(this.dom.createDom('strong', undefined, 'Down'));
+    var down = this.dom.createDom('div', 'c across');
     for (i = 0; i < crossword.down.length; i++) {
-        down.appendChild(document.createTextNode(' ' + crossword.down[i] + ' '));
+        var clue = crossword.down[i];
+        var element = this.dom.createDom('div', null, clue.number + '. ' + clue.text);
+        this.handler.listen(element,
+                            goog.events.EventType.CLICK,
+                            goog.partial(this.onClueClicked, game, clue));
+        down.appendChild(element);
     }
 
-    container.appendChild(across);
-    container.appendChild(down);
+    clues.appendChild(this.dom.createDom('strong', undefined, 'Across'));
+    clues.appendChild(across);
+    clues.appendChild(this.dom.createDom('strong', undefined, 'Down'));
+    clues.appendChild(down);
+
+    container.appendChild(clues);
 
     return table;
+};
+
+/**
+ * @param {derekslager.xword.Game} game
+ * @param {derekslager.xword.Clue} clue
+ */
+derekslager.xword.XwordHtml.prototype.onClueClicked = function(game, clue, e) {
+    this.beforeChange(game);
+    game.x = clue.square.column;
+    game.y = clue.square.row;
+    game.direction = clue.direction;
+    this.update(game);
+    this.logger.fine('clicked clue corresponding to position ' +
+                     clue.square.column + 'x' + clue.square.row);
 };
 
 /**

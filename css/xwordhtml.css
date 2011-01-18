@@ -1,16 +1,21 @@
-.crossword {
+.puzzle {
+    font-family: sans-serif;
+    overflow: auto;
+}
+
+.grid {
     border-collapse: collapse;
     -webkit-user-select: none;
     -moz-user-select: none;
+    float: left;
 }
 
-.crossword td {
+.grid td {
     width: 30px;
     height: 30px;
     text-align: center;
     vertical-align: middle;
     border: 1px solid black;
-    font-family: sans-serif;
     font-size: 1.2em;
     font-weight: bold;
     cursor: default;
@@ -25,4 +30,26 @@
     font-size: 8px;
     text-align: left;
     padding-left: 2px;
+}
+
+.clues {
+    float: left;
+    margin-left: 5px;
+}
+
+.clues strong {
+    text-align: center;
+    display: block;
+}
+
+.c {
+    padding: 5px;
+    height: 238px;
+    width: 230px;
+    background: #ddd;
+    overflow: auto;
+}
+
+.c div:hover {
+    background: ivory;
 }

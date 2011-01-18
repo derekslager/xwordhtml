@@ -35,10 +35,10 @@ derekslager.xword.Crossword.prototype.solution;
 /** @type {Array.<string>} */
 derekslager.xword.Crossword.prototype.clues;
 
-/** @type {Array.<string>} */
+/** @type {Array.<derekslager.xword.Clue>} */
 derekslager.xword.Crossword.prototype.across = [];
 
-/** @type {Array.<string>} */
+/** @type {Array.<derekslager.xword.Clue>} */
 derekslager.xword.Crossword.prototype.down = [];
 
 /** @type {string} */
