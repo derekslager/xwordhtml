@@ -16,13 +16,19 @@ goog.require('goog.events.KeyCodes');
 goog.require('goog.events.KeyHandler');
 goog.require('goog.events.KeyHandler.EventType');
 
+goog.require('goog.fx.dom.Scroll');
+goog.require('goog.fx.easing');
+
 goog.require('goog.math.Integer');
 
 goog.require('goog.string.Unicode');
 
+goog.require('goog.style');
+
 goog.require('derekslager.xword.Clue');
 goog.require('derekslager.xword.Crossword');
 goog.require('derekslager.xword.Game');
+goog.require('derekslager.xword.Game.EventType');
 goog.require('derekslager.xword.Square');
 
 /**
@@ -60,6 +66,16 @@ derekslager.xword.XwordHtml.parseShort = function(s) {
 };
 
 /**
+ * @param {string} s A binary string with characters encoded as
+ * ISO-8859-1.
+ * @return {string} A Unicode string.
+ */
+derekslager.xword.XwordHtml.decodeIso88591 = function(s) {
+    // TODO(derek): perform decoding of extended chars
+    return s;
+};
+
+/**
  * @param {string} s
  * @param {Array.<number>} index
  */
@@ -67,7 +83,7 @@ derekslager.xword.XwordHtml.readString = function(s, index) {
     var nul = s.indexOf('\0', index[0]);
     var result = s.substring(index[0], nul);
     index[0] = (nul + 1);
-    return result;
+    return derekslager.xword.XwordHtml.decodeIso88591(result);
 };
 
 /**
@@ -244,6 +260,16 @@ derekslager.xword.XwordHtml.prototype.renderCrossword = function(container, cros
     // Track game state.
     var game = new derekslager.xword.Game(crossword);
 
+    this.handler.listen(game,
+                        derekslager.xword.Game.EventType.POSITION_CHANGED,
+                        this.onPositionChanged);
+    this.handler.listen(game,
+                        derekslager.xword.Game.EventType.DIRECTION_CHANGED,
+                        this.onDirectionChanged);
+    this.handler.listen(game,
+                        derekslager.xword.Game.EventType.CLUE_CHANGED,
+                        this.onClueChanged);
+
     this.handler.listen(table,
                         goog.events.EventType.CLICK,
                         goog.bind(this.onCrosswordClicked, this, game));
@@ -261,7 +287,7 @@ derekslager.xword.XwordHtml.prototype.renderCrossword = function(container, cros
     var across = this.dom.createDom('div', 'c across');
     for (i = 0; i < crossword.across.length; i++) {
         var clue = crossword.across[i];
-        var element = this.dom.createDom('div', null, clue.number + '. ' + clue.text);
+        var element = this.dom.createDom('div', { 'id': this.getClueId(clue) }, clue.number + '. ' + clue.text);
         this.handler.listen(element,
                             goog.events.EventType.CLICK,
                             goog.partial(this.onClueClicked, game, clue));
@@ -271,7 +297,7 @@ derekslager.xword.XwordHtml.prototype.renderCrossword = function(container, cros
     var down = this.dom.createDom('div', 'c across');
     for (i = 0; i < crossword.down.length; i++) {
         var clue = crossword.down[i];
-        var element = this.dom.createDom('div', null, clue.number + '. ' + clue.text);
+        var element = this.dom.createDom('div', { 'id': this.getClueId(clue) }, clue.number + '. ' + clue.text);
         this.handler.listen(element,
                             goog.events.EventType.CLICK,
                             goog.partial(this.onClueClicked, game, clue));
@@ -294,12 +320,64 @@ derekslager.xword.XwordHtml.prototype.renderCrossword = function(container, cros
  */
 derekslager.xword.XwordHtml.prototype.onClueClicked = function(game, clue, e) {
     this.beforeChange(game);
-    game.x = clue.square.column;
-    game.y = clue.square.row;
-    game.direction = clue.direction;
+    game.setDirection(clue.direction);
+    game.setPosition(clue.square.column, clue.square.row);
     this.update(game);
     this.logger.fine('clicked clue corresponding to position ' +
                      clue.square.column + 'x' + clue.square.row);
+};
+
+/**
+ * @param {goog.events.Event} e
+ */
+derekslager.xword.XwordHtml.prototype.onPositionChanged = function(e) {
+    var game = e.target;
+    this.logger.fine('position changed in ' + game.crossword.title + ' ' +
+                     e.previousColumn + 'x' + e.previousRow + ' => ' +
+                     e.column + 'x' + e.row);
+};
+
+/**
+ * @param {derekslager.xword.Clue} clue
+ * @return {string}
+ */
+derekslager.xword.XwordHtml.prototype.getClueId = function(clue) {
+    return 'c-' + (clue.direction == derekslager.xword.Direction.ACROSS ? 'a-' : 'd-') + clue.number;
+};
+
+/**
+ * @param {goog.events.Event} e
+ */
+derekslager.xword.XwordHtml.prototype.onClueChanged = function(e) {
+    var game = e.target;
+    this.logger.fine('clue changed in ' + game.crossword.title);
+
+    // Find the clue.
+    var previousClue = this.dom.getElement(this.getClueId(e.previousClue));
+    var clue = this.dom.getElement(this.getClueId(e.clue));
+
+    goog.dom.classes.remove(previousClue, 'sc');
+    goog.dom.classes.add(clue, 'sc');
+
+    // Center the clue in its container.
+    var parent = /** @type {Element} */ (clue.parentNode);
+    var targetY = (clue.offsetTop - parent.offsetTop) - (parent.offsetHeight / 2);
+
+    var scroll = new goog.fx.dom.Scroll(
+        parent,
+        [0, parent.scrollTop],
+        [0, targetY],
+        500,
+        goog.fx.easing.easeOut);
+    scroll.play();
+};
+
+/**
+ * @param {goog.events.Event} e
+ */
+derekslager.xword.XwordHtml.prototype.onDirectionChanged = function(e) {
+    var game = e.target;
+    this.logger.fine('direction changed in ' + game.crossword.title);
 };
 
 /**
@@ -408,11 +486,12 @@ derekslager.xword.XwordHtml.prototype.update = function(game) {
         wordCells[i].style.backgroundColor = '#ddd';
     }
     this.getCell(game.getCurrentSquare()).style.backgroundColor = 'yellow';
+    this.table.focus();
 };
 
 derekslager.xword.XwordHtml.prototype.onCrosswordClicked = function(game, e) {
     var cell = goog.dom.getAncestorByTagNameAndClass(e.target, goog.dom.TagName.TD);
-    if (cell.nodeName === 'TD' && !goog.dom.classes.has(cell, 'b')) {
+    if (cell && !goog.dom.classes.has(cell, 'b')) {
 
         this.beforeChange(game);
 
@@ -425,8 +504,7 @@ derekslager.xword.XwordHtml.prototype.onCrosswordClicked = function(game, e) {
             game.changeDirection();
         }
 
-        game.x = x;
-        game.y = y;
+        game.setPosition(x, y);
 
         this.update(game);
     }

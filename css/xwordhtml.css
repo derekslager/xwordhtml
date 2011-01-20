@@ -50,6 +50,14 @@
     overflow: auto;
 }
 
+.c div {
+    padding: 3px;
+}
+
 .c div:hover {
-    background: ivory;
+    background-color: ivory;
+}
+
+.sc, .c .sc:hover {
+    background-color: yellow;
 }
