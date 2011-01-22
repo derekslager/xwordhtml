@@ -346,7 +346,7 @@ derekslager.xword.XwordHtml.prototype.renderCrossword = function(container, cros
                 var number = square.getNumber();
                 var n = number ? String(number) : goog.string.Unicode.NBSP;
                 cell.appendChild(this.dom.createDom('span', 'n', n));
-                cell.appendChild(this.dom.createDom('span', 'a', square.answer));
+                cell.appendChild(this.dom.createDom('span', 'a', goog.string.Unicode.NBSP));
             } else {
                 goog.dom.classes.add(cell, 'b');
             }
