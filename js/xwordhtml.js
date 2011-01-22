@@ -25,6 +25,10 @@ goog.require('goog.string.Unicode');
 
 goog.require('goog.style');
 
+goog.require('goog.ui.MenuItem');
+goog.require('goog.ui.Toolbar');
+goog.require('goog.ui.ToolbarMenuButton');
+
 goog.require('derekslager.xword.Clue');
 goog.require('derekslager.xword.Crossword');
 goog.require('derekslager.xword.Game');
@@ -108,6 +112,8 @@ derekslager.xword.XwordHtml.prototype.onLoadEnd = function(puzzle, e) {
         var height = crossword.height = result.charCodeAt(WIDTH_OFFSET + 1);
         var clueCount = derekslager.xword.XwordHtml.parseShort(result.substr(WIDTH_OFFSET + 2, 2));
 
+        this.logger.fine('clueCount: ' + clueCount);
+
         /** @const */
         var SOLUTION_OFFSET = 0x34;
 
@@ -125,6 +131,38 @@ derekslager.xword.XwordHtml.prototype.onLoadEnd = function(puzzle, e) {
         }
 
         crossword.notes = derekslager.xword.XwordHtml.readString(result, stringIndex);
+
+        var circledClues = {};
+
+        // Having read all the strings, we should be either at EOF or
+        // we'll have extra sections.
+        var index = stringIndex[0];
+        this.logger.fine('looking for sections starting at index ' + index);
+        while (result.length > index + 9) {
+            this.logger.fine('INDEX: ' + index);
+            // Read section header.
+            var sectionHeader = result.substr(index, 8);
+            var lengthBytes = sectionHeader.substr(4, 2);
+            this.logger.fine('len bytes len: ' + lengthBytes.length);
+
+            // Determine the length of the data section.
+            var length = derekslager.xword.XwordHtml.parseShort(lengthBytes);
+            this.logger.fine('found section of length ' + length);
+
+            var dataIndex = index + 8;
+
+            var sectionName = sectionHeader.substr(0, 4);
+            this.logger.fine('FOUND SECTION "' + sectionName + '"');
+            if (sectionName == 'GEXT') {
+                for (var c = 0; c < length; c++) {
+                    var cc = result.charCodeAt(dataIndex + c);
+                    if (cc & 0x80) {
+                        circledClues[c] = true;
+                    }
+                }
+            }
+            index += (length + 9);
+        }
 
         crossword.squares = new Array(crossword.height);
         for (i = 0; i < crossword.height; i++) {
@@ -147,6 +185,8 @@ derekslager.xword.XwordHtml.prototype.onLoadEnd = function(puzzle, e) {
             for (var j = 0; j < crossword.width; j++) {
                 var square = crossword.squares[i][j];
                 if (!square) continue;
+
+                square.circled = circledClues[(i * crossword.width) + j];
 
                 if ((j === 0 || !crossword.squares[i][j - 1]) &&
                     (j + 1 < crossword.width && crossword.squares[i][j + 1])) {
@@ -213,7 +253,7 @@ derekslager.xword.XwordHtml.prototype.onDrop = function(e) {
     var output = [];
     for (var i = 0, file; file = files[i]; i++) {
         var puzzle = this.dom.createDom('div', 'puzzle');
-        puzzle.appendChild(this.dom.createDom('h1', null, file.name));
+        // puzzle.appendChild(this.dom.createDom('h1', null, file.name));
 
         var reader = new FileReader();
         reader.onloadend = goog.bind(this.onLoadEnd, this, puzzle);
@@ -226,6 +266,35 @@ derekslager.xword.XwordHtml.prototype.onDrop = function(e) {
 };
 
 /**
+ * @param {derekslager.xword.Game} game
+ * @param {goog.events.Event} e
+ */
+derekslager.xword.XwordHtml.prototype.onToolbarAction = function(game, e) {
+    var item = /** @type {goog.ui.MenuItem} */ (e.target);
+    var action = /** @type {string} */ (item.getModel());
+    if (action === 'reveal-letter') {
+        var square = game.getCurrentSquare();
+        var cell = this.getCell(square);
+        this.setCellValue(cell, square.answer);
+    } else if (action === 'reveal-word') {
+        var squares = game.getCurrentWordSquares();
+        for (var i = 0; i < squares.length; i++) {
+            var square = squares[i];
+            this.setCellValue(this.getCell(square), square.answer);
+        }
+    } else if (action === 'check-letter') {
+        var square = game.getCurrentSquare();
+        var cell = this.getCell(square);
+        var value = this.getCellValue(cell);
+        var message = square.answer === value ? 'Letter is correct.' : 'Letter is wrong.';
+        alert(message);
+    } else if (action === 'check-word') {
+    } else if (action === 'check-puzzle') {
+    }
+    this.table.focus();
+};
+
+/**
  * @param {Element} container
  * @param {derekslager.xword.Crossword} crossword
  * @return {!Element} The created table element.
@@ -233,6 +302,29 @@ derekslager.xword.XwordHtml.prototype.onDrop = function(e) {
 derekslager.xword.XwordHtml.prototype.renderCrossword = function(container, crossword) {
 
     container.appendChild(this.dom.createDom('h2', null, crossword.title));
+
+    container.appendChild(
+        this.dom.createDom(
+            'div', null,
+            this.dom.createTextNode(crossword.author),
+            this.dom.createTextNode(crossword.copyright)));
+
+    // Build the toolbar.
+    var toolbar = new goog.ui.Toolbar();
+
+    var check = new goog.ui.ToolbarMenuButton('Check');
+    check.addItem(new goog.ui.MenuItem('Check Letter', 'check-letter', this.dom), true);
+    check.addItem(new goog.ui.MenuItem('Check Word', 'check-word', this.dom), true);
+    check.addItem(new goog.ui.MenuItem('Check Puzzle', 'check-word', this.dom), true);
+
+    var reveal = new goog.ui.ToolbarMenuButton('Reveal');
+    reveal.addItem(new goog.ui.MenuItem('Reveal Letter', 'reveal-letter', this.dom), true);
+    reveal.addItem(new goog.ui.MenuItem('Reveal Word', 'reveal-word', this.dom), true);
+
+    toolbar.addChild(check, true);
+    toolbar.addChild(reveal, true);
+
+    toolbar.render(container);
 
     // Build the grid.
     var table = this.dom.createTable(crossword.height, crossword.width);
@@ -247,6 +339,10 @@ derekslager.xword.XwordHtml.prototype.renderCrossword = function(container, cros
 
             var square = row[j];
             if (square) {
+                if (square.circled) {
+                    cell = cell.appendChild(this.dom.createDom('div', 'circled'));
+                }
+
                 var number = square.getNumber();
                 var n = number ? String(number) : goog.string.Unicode.NBSP;
                 cell.appendChild(this.dom.createDom('span', 'n', n));
@@ -278,6 +374,8 @@ derekslager.xword.XwordHtml.prototype.renderCrossword = function(container, cros
     this.handler.listen(keyHandler,
                         goog.events.KeyHandler.EventType.KEY,
                         goog.bind(this.onCrosswordKey, this, game));
+
+    this.handler.listen(toolbar, goog.ui.Component.EventType.ACTION, goog.partial(this.onToolbarAction, game));
 
     container.appendChild(table);
 
@@ -390,8 +488,19 @@ derekslager.xword.XwordHtml.prototype.getCell = function(square) {
 /**
  * @param {Element} cell
  */
+derekslager.xword.XwordHtml.prototype.getContentNode = function(cell) {
+    var node = cell.firstChild;
+    if (goog.dom.classes.has(node, 'circled')) {
+        node = node.firstChild;
+    }
+    return node.nextSibling;
+};
+
+/**
+ * @param {Element} cell
+ */
 derekslager.xword.XwordHtml.prototype.getCellValue = function(cell) {
-    return this.dom.getTextContent(cell.firstChild.nextSibling);
+    return this.dom.getTextContent(this.getContentNode(cell));
 };
 
 /**
@@ -399,7 +508,7 @@ derekslager.xword.XwordHtml.prototype.getCellValue = function(cell) {
  * @param {string} value
  */
 derekslager.xword.XwordHtml.prototype.setCellValue = function(cell, value) {
-    cell.firstChild.nextSibling.innerHTML = value;
+    this.getContentNode(cell).innerHTML = value;
 };
 
 /**

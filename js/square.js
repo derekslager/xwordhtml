@@ -31,6 +31,11 @@ derekslager.xword.Square.prototype.down;
 derekslager.xword.Square.prototype.across;
 
 /**
+ * @type {boolean}
+ */
+derekslager.xword.Square.prototype.circled;
+
+/**
  * @return {number?}
  */
 derekslager.xword.Square.prototype.getNumber = function() {
