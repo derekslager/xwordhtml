@@ -548,7 +548,11 @@ derekslager.xword.XwordHtml.prototype.onCrosswordKey = function(game, e) {
         game.moveLeft();
     } else if (e.keyCode == goog.events.KeyCodes.TAB) {
         this.beforeChange(game);
-        game.nextWord();
+        if (e.shiftKey) {
+            game.previousWord();
+        } else {
+            game.nextWord();
+        }
     } else if (e.keyCode === goog.events.KeyCodes.DELETE) {
         this.beforeChange(game);
         this.setCellValue(this.getCell(game.getCurrentSquare()), goog.string.Unicode.NBSP);

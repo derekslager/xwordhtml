@@ -194,21 +194,46 @@ derekslager.xword.Game.prototype.moveNext = function() {
 };
 
 /**
- * Move to the next word.
+ * Move to the previous word.
  */
-derekslager.xword.Game.prototype.nextWord = function() {
-    var row = this.y;
-    var cell = this.x;
+derekslager.xword.Game.prototype.previousWord = function() {
+    var clue = this.getCurrentClue();
+    var row = clue.square.row;
+    var column = clue.square.column;
     while (true) {
-        if (cell++ == this.crossword.width) {
-            row = (row + 1) % this.crossword.height;
-            cell = -1;
+        if (column-- == 0) {
+            row = (row == 0 ? this.crossword.height - 1 : row - 1);
+            column = this.crossword.width + 1;
         } else {
-            var square = this.crossword.squares[row][cell];
+            var square = this.crossword.squares[row][column];
             if (!square) continue;
             if ((this.direction == derekslager.xword.Direction.ACROSS && square.across) ||
                 (this.direction == derekslager.xword.Direction.DOWN && square.down)) {
-                this.setPosition(cell, row);
+                this.setPosition(column, row);
+                return;
+            }
+        }
+    }
+};
+
+/**
+ * Move to the next word.
+ */
+derekslager.xword.Game.prototype.nextWord = function() {
+    // TODO(derek): refactor, just need getCurrent(Numbered?)Square
+    var clue = this.getCurrentClue();
+    var row = clue.square.row;
+    var column = clue.square.column;
+    while (true) {
+        if (column++ == this.crossword.width) {
+            row = (row + 1) % this.crossword.height;
+            column = -1;
+        } else {
+            var square = this.crossword.squares[row][column];
+            if (!square) continue;
+            if ((this.direction == derekslager.xword.Direction.ACROSS && square.across) ||
+                (this.direction == derekslager.xword.Direction.DOWN && square.down)) {
+                this.setPosition(column, row);
                 return;
             }
         }
