@@ -8,8 +8,20 @@ body {
     font-size: 14px;
 }
 
+.metadata {
+    font-size: small;
+}
+
 .puzzle {
     overflow: auto;
+}
+
+.timer {
+    font-size: 1.3em;
+    font-weight: bold;
+    padding-left: 26px;
+    min-height: 22px;
+    background: url(../sw.png) left center no-repeat;
 }
 
 .grid {
@@ -53,7 +65,7 @@ body {
 
 .c {
     padding: 5px;
-    height: 238px;
+    height: 212px;
     width: 230px;
     background: #ddd;
     overflow: auto;
@@ -76,6 +88,7 @@ body {
 .circled {
     border: 1px solid black;
     border-radius: 15px;
+    -moz-border-radius: 15px;
 }
 
 .bad .a {

@@ -25,11 +25,13 @@ goog.require('goog.math.Integer');
 
 goog.require('goog.string.Unicode');
 
+goog.require('goog.string');
 goog.require('goog.style');
 
 goog.require('goog.ui.MenuItem');
 goog.require('goog.ui.Toolbar');
 goog.require('goog.ui.ToolbarMenuButton');
+goog.require('goog.ui.ToolbarToggleButton');
 
 goog.require('derekslager.xword.Clue');
 goog.require('derekslager.xword.Crossword');
@@ -52,6 +54,11 @@ derekslager.xword.XwordHtml = function() {
     this.handler = new goog.events.EventHandler(this);
     this.dropZone = this.dom.getElement('dropzone');
 };
+
+/**
+ * @type {Element}
+ */
+derekslager.xword.XwordHtml.prototype.timer;
 
 /**
  * @param {goog.events.Event} e
@@ -99,7 +106,6 @@ derekslager.xword.XwordHtml.readString = function(s, index) {
 derekslager.xword.XwordHtml.prototype.onLoadEnd = function(puzzle, e) {
     if (e.target.readyState == FileReader.DONE) {
         var result = e.target.result;
-        this.logger.fine('onLoadEnd result: ' + result);
         this.logger.fine('header: ' + result.substr(2, 12));
 
         // TODO(derek): confirm ACROSS&DOWN, throw on error
@@ -232,7 +238,7 @@ derekslager.xword.XwordHtml.prototype.onLoadEnd = function(puzzle, e) {
             }
         }
 
-        this.table = this.renderCrossword(puzzle, crossword);
+        this.renderCrossword(puzzle, crossword);
 
     } else {
         this.logger.warning('unexpected readyState: ' + e.target.readyState);
@@ -318,6 +324,14 @@ derekslager.xword.XwordHtml.prototype.onToolbarAction = function(game, e) {
         if (allOk) {
             window.alert('You solved the puzzle!');
         }
+    } else if (action === 'pause-timer') {
+        if (e.target.isChecked()) {
+            game.stopTimer();
+        } else {
+            game.startTimer();
+        }
+    } else {
+        this.logger.warning('Unhandled: ' + action);
     }
     this.table.focus();
 };
@@ -325,7 +339,6 @@ derekslager.xword.XwordHtml.prototype.onToolbarAction = function(game, e) {
 /**
  * @param {Element} container
  * @param {derekslager.xword.Crossword} crossword
- * @return {!Element} The created table element.
  */
 derekslager.xword.XwordHtml.prototype.renderCrossword = function(container, crossword) {
 
@@ -333,8 +346,8 @@ derekslager.xword.XwordHtml.prototype.renderCrossword = function(container, cros
 
     container.appendChild(
         this.dom.createDom(
-            'div', null,
-            this.dom.createTextNode(crossword.author),
+            'div', 'metadata',
+            this.dom.createTextNode(crossword.author + ' '),
             this.dom.createTextNode(crossword.copyright)));
 
     // Build the toolbar.
@@ -349,8 +362,12 @@ derekslager.xword.XwordHtml.prototype.renderCrossword = function(container, cros
     reveal.addItem(new goog.ui.MenuItem('Reveal Letter', 'reveal-letter', this.dom));
     reveal.addItem(new goog.ui.MenuItem('Reveal Word', 'reveal-word', this.dom));
 
+    var pause = new goog.ui.ToolbarToggleButton('Pause Timer', undefined, this.dom);
+    pause.setModel('pause-timer');
+
     toolbar.addChild(check, true);
     toolbar.addChild(reveal, true);
+    toolbar.addChild(pause, true);
 
     toolbar.render(container);
 
@@ -394,6 +411,10 @@ derekslager.xword.XwordHtml.prototype.renderCrossword = function(container, cros
                         derekslager.xword.Game.EventType.CLUE_CHANGED,
                         this.onClueChanged);
 
+    this.handler.listen(game,
+                        derekslager.xword.Game.EventType.TIMER_TICK,
+                        this.onTimerTick);
+
     this.handler.listen(table,
                         goog.events.EventType.CLICK,
                         goog.bind(this.onCrosswordClicked, this, game));
@@ -430,6 +451,8 @@ derekslager.xword.XwordHtml.prototype.renderCrossword = function(container, cros
         down.appendChild(element);
     }
 
+    clues.appendChild(this.timer = this.dom.createDom('div', 'timer', '0:00'));
+
     clues.appendChild(this.dom.createDom('strong', undefined, 'Across'));
     clues.appendChild(across);
     clues.appendChild(this.dom.createDom('strong', undefined, 'Down'));
@@ -437,7 +460,12 @@ derekslager.xword.XwordHtml.prototype.renderCrossword = function(container, cros
 
     container.appendChild(clues);
 
-    return table;
+    // TODO(derek): clean this hot mess up
+    this.table = table;
+    this.update(game);
+    table.focus();
+
+    game.startTimer();
 };
 
 /**
@@ -496,6 +524,18 @@ derekslager.xword.XwordHtml.prototype.onClueChanged = function(e) {
         500,
         goog.fx.easing.easeOut);
     scroll.play();
+};
+
+derekslager.xword.XwordHtml.prototype.onTimerTick = function(e) {
+    var game = e.target;
+    var elapsed = game.totalTime;
+
+    var seconds = (elapsed / 1000).toFixed(0);
+    var minutes = Math.floor(seconds / 60);
+
+    this.timer.innerHTML =
+        minutes.toFixed(0) + ':' +
+        goog.string.padNumber((seconds - (minutes * 60)).toFixed(0), 2);
 };
 
 /**

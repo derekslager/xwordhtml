@@ -4,9 +4,11 @@ goog.provide('derekslager.xword.Game.EventType');
 
 goog.require('goog.debug.LogManager');
 goog.require('goog.dom.classes');
+goog.require('goog.events');
 goog.require('goog.events.Event');
 goog.require('goog.events.EventTarget');
 goog.require('goog.string.Unicode');
+goog.require('goog.Timer');
 
 /**
  * Class to track game state for a puzzle.
@@ -27,10 +29,53 @@ derekslager.xword.Game = function(crossword) {
      */
     this.direction = derekslager.xword.Direction.ACROSS;
 
+    /** @type {number} */
     this.x = 0;
+    /** @type {number} */
     this.y = 0;
+
+    this.moveRight();
+    this.moveLeft();
+
+    /**
+     * Tracks how much time the puzzle has taken (ms).
+     * @type {number}
+     */
+    this.totalTime = 0;
+
+    /**
+     * The base time to use for computing how much time to add to the
+     * timer.
+     * @type {number}
+     */
+    this.timeOffset = null;
+
+    /**
+     * @type {goog.Timer}
+     */
+    this.tickTimer = new goog.Timer(1000);
+    goog.events.listen(this.tickTimer, goog.Timer.TICK, this.timerTick, false, this);
 };
 goog.inherits(derekslager.xword.Game, goog.events.EventTarget);
+
+derekslager.xword.Game.prototype.startTimer = function() {
+    if (!this.timeOffset) {
+        this.timeOffset = (new Date()).getTime();
+        this.tickTimer.start();
+    }
+};
+
+derekslager.xword.Game.prototype.stopTimer = function() {
+    this.timeOffset = 0;
+    this.tickTimer.stop();
+};
+
+derekslager.xword.Game.prototype.timerTick = function(e) {
+    var now = (new Date()).getTime();
+    this.totalTime += now - this.timeOffset;
+    this.timeOffset = now;
+    this.dispatchEvent(derekslager.xword.Game.EventType.TIMER_TICK);
+};
 
 /**
  * Retrieves the current clue.
@@ -319,7 +364,8 @@ derekslager.xword.Game.prototype.getCurrentWordSquares = function() {
 derekslager.xword.Game.EventType = {
     CLUE_CHANGED: 'word',
     POSITION_CHANGED: 'position',
-    DIRECTION_CHANGED: 'direction'
+    DIRECTION_CHANGED: 'direction',
+    TIMER_TICK: 'tick'
 };
 
 /**
