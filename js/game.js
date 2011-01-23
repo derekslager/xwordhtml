@@ -202,7 +202,13 @@ derekslager.xword.Game.prototype.previousWord = function() {
     var column = clue.square.column;
     while (true) {
         if (column-- == 0) {
-            row = (row == 0 ? this.crossword.height - 1 : row - 1);
+            if (row == 0) {
+                // cycle
+                this.changeDirection();
+                row = this.crossword.height - 1;
+            } else {
+                row--;
+            }
             column = this.crossword.width + 1;
         } else {
             var square = this.crossword.squares[row][column];
@@ -226,9 +232,16 @@ derekslager.xword.Game.prototype.nextWord = function() {
     var column = clue.square.column;
     while (true) {
         if (column++ == this.crossword.width) {
-            row = (row + 1) % this.crossword.height;
+            if (row == this.crossword.height - 1) {
+                // cycle
+                this.changeDirection();
+                row = 0;
+            } else {
+                row++;
+            }
             column = -1;
         } else {
+            // could refactor, this is same in previous word
             var square = this.crossword.squares[row][column];
             if (!square) continue;
             if ((this.direction == derekslager.xword.Direction.ACROSS && square.across) ||
