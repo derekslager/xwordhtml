@@ -1,5 +1,14 @@
-.puzzle {
+body, h1, h2 {
+    padding: 0;
+    margin: 0;
+}
+
+body {
     font-family: sans-serif;
+    font-size: 14px;
+}
+
+.puzzle {
     overflow: auto;
 }
 
@@ -11,12 +20,12 @@
 }
 
 .grid td {
+    font-size: 1.1em;
     width: 30px;
     height: 30px;
     text-align: center;
     vertical-align: middle;
     border: 1px solid black;
-    font-size: 1.2em;
     font-weight: bold;
     cursor: default;
 }
@@ -52,6 +61,8 @@
 
 .c div {
     padding: 3px;
+    border-radius: 6px;
+    cursor: default;
 }
 
 .c div:hover {
@@ -65,4 +76,8 @@
 .circled {
     border: 1px solid black;
     border-radius: 15px;
+}
+
+.bad .a {
+    color: red;
 }

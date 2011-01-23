@@ -16,6 +16,8 @@ goog.require('goog.events.KeyCodes');
 goog.require('goog.events.KeyHandler');
 goog.require('goog.events.KeyHandler.EventType');
 
+goog.require('goog.functions');
+
 goog.require('goog.fx.dom.Scroll');
 goog.require('goog.fx.easing');
 
@@ -266,6 +268,24 @@ derekslager.xword.XwordHtml.prototype.onDrop = function(e) {
 };
 
 /**
+ * Checks the provided square for correctness.
+ * @param derekslager.xword.Square square
+ * @return true if the cell is good.
+ */
+derekslager.xword.XwordHtml.prototype.checkSquare = function(square) {
+    if (!square) {
+        return false;
+    }
+    var cell = this.getCell(square);
+    var value = this.getCellValue(cell);
+    var good = square.answer === value;
+    if (!good) {
+        goog.dom.classes.add(cell, 'bad');
+    }
+    return good;
+};
+
+/**
  * @param {derekslager.xword.Game} game
  * @param {goog.events.Event} e
  */
@@ -284,12 +304,20 @@ derekslager.xword.XwordHtml.prototype.onToolbarAction = function(game, e) {
         }
     } else if (action === 'check-letter') {
         var square = game.getCurrentSquare();
-        var cell = this.getCell(square);
-        var value = this.getCellValue(cell);
-        var message = square.answer === value ? 'Letter is correct.' : 'Letter is wrong.';
-        alert(message);
+        this.checkSquare(square);
     } else if (action === 'check-word') {
+        var squares = game.getCurrentWordSquares();
+        goog.array.forEach(squares, this.checkSquare, this);
     } else if (action === 'check-puzzle') {
+        var allOk = false;
+        var rows = game.crossword.squares;
+        for (var i = 0; i < rows.length; i++) {
+            var checks = goog.array.map(rows[i], this.checkSquare, this);
+            allOk = allOk && goog.array.every(checks, goog.functions.identity);
+        }
+        if (allOk) {
+            window.alert('You solved the puzzle!');
+        }
     }
     this.table.focus();
 };
@@ -313,13 +341,13 @@ derekslager.xword.XwordHtml.prototype.renderCrossword = function(container, cros
     var toolbar = new goog.ui.Toolbar();
 
     var check = new goog.ui.ToolbarMenuButton('Check');
-    check.addItem(new goog.ui.MenuItem('Check Letter', 'check-letter', this.dom), true);
-    check.addItem(new goog.ui.MenuItem('Check Word', 'check-word', this.dom), true);
-    check.addItem(new goog.ui.MenuItem('Check Puzzle', 'check-word', this.dom), true);
+    check.addItem(new goog.ui.MenuItem('Check Letter', 'check-letter', this.dom));
+    check.addItem(new goog.ui.MenuItem('Check Word', 'check-word', this.dom));
+    check.addItem(new goog.ui.MenuItem('Check Puzzle', 'check-puzzle', this.dom));
 
     var reveal = new goog.ui.ToolbarMenuButton('Reveal');
-    reveal.addItem(new goog.ui.MenuItem('Reveal Letter', 'reveal-letter', this.dom), true);
-    reveal.addItem(new goog.ui.MenuItem('Reveal Word', 'reveal-word', this.dom), true);
+    reveal.addItem(new goog.ui.MenuItem('Reveal Letter', 'reveal-letter', this.dom));
+    reveal.addItem(new goog.ui.MenuItem('Reveal Word', 'reveal-word', this.dom));
 
     toolbar.addChild(check, true);
     toolbar.addChild(reveal, true);
@@ -509,6 +537,7 @@ derekslager.xword.XwordHtml.prototype.getCellValue = function(cell) {
  */
 derekslager.xword.XwordHtml.prototype.setCellValue = function(cell, value) {
     this.getContentNode(cell).innerHTML = value;
+    goog.dom.classes.remove(cell, 'good', 'bad');
 };
 
 /**
