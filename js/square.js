@@ -21,6 +21,12 @@ derekslager.xword.Square.prototype.column;
 derekslager.xword.Square.prototype.answer;
 
 /**
+ * The value as entered by the user.
+ * @type {string}
+ */
+derekslager.xword.Square.prototype.value;
+
+/**
  * @type {number}
  */
 derekslager.xword.Square.prototype.down;

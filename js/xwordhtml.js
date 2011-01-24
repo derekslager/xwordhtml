@@ -269,7 +269,7 @@ derekslager.xword.XwordHtml.prototype.onDrop = function(e) {
         // Read file contents.
         reader.readAsBinaryString(file);
 
-        this.dom.getDocument().body.appendChild(puzzle);
+        this.dom.insertSiblingAfter(puzzle, this.dropZone);
     }
 };
 
@@ -300,13 +300,12 @@ derekslager.xword.XwordHtml.prototype.onToolbarAction = function(game, e) {
     var action = /** @type {string} */ (item.getModel());
     if (action === 'reveal-letter') {
         var square = game.getCurrentSquare();
-        var cell = this.getCell(square);
-        this.setCellValue(cell, square.answer);
+        game.setSquareValue(square, square.answer);
     } else if (action === 'reveal-word') {
         var squares = game.getCurrentWordSquares();
         for (var i = 0; i < squares.length; i++) {
             var square = squares[i];
-            this.setCellValue(this.getCell(square), square.answer);
+            game.setSquareValue(square, square.answer);
         }
     } else if (action === 'check-letter') {
         var square = game.getCurrentSquare();
@@ -401,6 +400,7 @@ derekslager.xword.XwordHtml.prototype.renderCrossword = function(container, cros
     // Track game state.
     var game = new derekslager.xword.Game(crossword);
 
+    // Movement.
     this.handler.listen(game,
                         derekslager.xword.Game.EventType.POSITION_CHANGED,
                         this.onPositionChanged);
@@ -410,6 +410,10 @@ derekslager.xword.XwordHtml.prototype.renderCrossword = function(container, cros
     this.handler.listen(game,
                         derekslager.xword.Game.EventType.CLUE_CHANGED,
                         this.onClueChanged);
+
+    this.handler.listen(game,
+                        derekslager.xword.Game.EventType.SQUARE_VALUE_CHANGED,
+                        this.onSquareValueChanged);
 
     this.handler.listen(game,
                         derekslager.xword.Game.EventType.TIMER_TICK,
@@ -526,6 +530,12 @@ derekslager.xword.XwordHtml.prototype.onClueChanged = function(e) {
     scroll.play();
 };
 
+derekslager.xword.XwordHtml.prototype.onSquareValueChanged = function(e) {
+    var game = e.target;
+    var square = e.square;
+    this.setCellValue(this.getCell(square), square.value || goog.string.Unicode.NBSP);
+};
+
 derekslager.xword.XwordHtml.prototype.onTimerTick = function(e) {
     var game = e.target;
     var elapsed = game.totalTime;
@@ -535,7 +545,7 @@ derekslager.xword.XwordHtml.prototype.onTimerTick = function(e) {
 
     this.timer.innerHTML =
         minutes.toFixed(0) + ':' +
-        goog.string.padNumber((seconds - (minutes * 60)).toFixed(0), 2);
+        goog.string.padNumber(seconds - (minutes * 60), 2);
 };
 
 /**
@@ -601,7 +611,7 @@ derekslager.xword.XwordHtml.prototype.onCrosswordKey = function(game, e) {
                e.keyCode >= goog.events.KeyCodes.A &&
                e.keyCode <= goog.events.KeyCodes.Z) {
         this.beforeChange(game);
-        this.setCellValue(this.getCell(game.getCurrentSquare()), String.fromCharCode(e.charCode).toUpperCase());
+        game.setSquareValue(game.getCurrentSquare(), String.fromCharCode(e.charCode).toUpperCase());
         game.moveNext();
     } else if (e.keyCode == goog.events.KeyCodes.UP) {
         this.beforeChange(game);
@@ -624,13 +634,13 @@ derekslager.xword.XwordHtml.prototype.onCrosswordKey = function(game, e) {
         }
     } else if (e.keyCode === goog.events.KeyCodes.DELETE) {
         this.beforeChange(game);
-        this.setCellValue(this.getCell(game.getCurrentSquare()), goog.string.Unicode.NBSP);
+        game.setSquareValue(game.getCurrentSquare(), '');
     } else if (e.keyCode === goog.events.KeyCodes.BACKSPACE) {
         this.beforeChange(game);
         if (this.isCellEmpty(this.getCell(game.getCurrentSquare()))) {
             game.movePrevious();
         }
-        this.setCellValue(this.getCell(game.getCurrentSquare()), goog.string.Unicode.NBSP);
+        game.setSquareValue(game.getCurrentSquare(), '');
     } else {
         changed = false;
     }
@@ -697,3 +707,6 @@ derekslager.xword.XwordHtml.prototype.load = function() {
     this.handler.listen(this.dropZone, goog.events.EventType.DROP, this.onDrop);
     this.logger.fine('Event listeners added.');
 };
+
+goog.exportSymbol('derekslager.xword.XwordHtml', derekslager.xword.XwordHtml);
+goog.exportProperty(derekslager.xword.XwordHtml.prototype, 'load', derekslager.xword.XwordHtml.prototype.load);

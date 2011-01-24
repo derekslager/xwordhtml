@@ -48,7 +48,7 @@ derekslager.xword.Game = function(crossword) {
      * timer.
      * @type {number}
      */
-    this.timeOffset = null;
+    this.timeOffset = 0;
 
     /**
      * @type {goog.Timer}
@@ -129,11 +129,26 @@ derekslager.xword.Game.prototype.checkForClueChanged = function(previousClue) {
 };
 
 /**
- * Sets the current position.
+ * @param {derekslager.xword.Square} square
+ * @param {string} value
+ */
+derekslager.xword.Game.prototype.setSquareValue = function(square, value) {
+    square.value = value;
+
+    var event = new goog.events.Event(derekslager.xword.Game.EventType.SQUARE_VALUE_CHANGED);
+    event.square = square;
+    this.dispatchEvent(event);
+};
+
+/**
+ * Sets the current position, which is assumed to be a valid position
+ * (not a black square).
  * @param {number} column
  * @param {number} row
+ * @param {boolean=} opt_moveToEmpty If true, will adjust the position
+ * to the first empty square in the current word.
  */
-derekslager.xword.Game.prototype.setPosition = function(column, row) {
+derekslager.xword.Game.prototype.setPosition = function(column, row, opt_moveToEmpty) {
     var previousX = this.x;
     var previousY = this.y;
 
@@ -141,6 +156,19 @@ derekslager.xword.Game.prototype.setPosition = function(column, row) {
 
     this.x = column;
     this.y = row;
+
+    if (opt_moveToEmpty) {
+        // If the square is filled, move to the first empty square.
+        var squares = this.getCurrentWordSquares();
+        for (var i = 0; i < squares.length; i++) {
+            var square = squares[i];
+            if (!square.value) {
+                this.x = square.column;
+                this.y = square.row;
+                break;
+            }
+        }
+    }
 
     if (previousX != this.x || previousY != this.y) {
         var event = new goog.events.Event(derekslager.xword.Game.EventType.POSITION_CHANGED);
@@ -209,7 +237,7 @@ derekslager.xword.Game.prototype.moveRight = function() {
 };
 
 /**
- * Move to the previous cell, if possible.
+ * Move to the previous cell, if possible (backspace).
  */
 derekslager.xword.Game.prototype.movePrevious = function() {
     if (this.direction === derekslager.xword.Direction.ACROSS) {
@@ -224,7 +252,7 @@ derekslager.xword.Game.prototype.movePrevious = function() {
 };
 
 /**
- * Move to the next cell, if possible.
+ * Move to the next cell, if possible (after typing a letter).
  */
 derekslager.xword.Game.prototype.moveNext = function() {
     if (this.direction === derekslager.xword.Direction.ACROSS) {
@@ -260,7 +288,7 @@ derekslager.xword.Game.prototype.previousWord = function() {
             if (!square) continue;
             if ((this.direction == derekslager.xword.Direction.ACROSS && square.across) ||
                 (this.direction == derekslager.xword.Direction.DOWN && square.down)) {
-                this.setPosition(column, row);
+                this.setPosition(column, row, true);
                 return;
             }
         }
@@ -291,7 +319,7 @@ derekslager.xword.Game.prototype.nextWord = function() {
             if (!square) continue;
             if ((this.direction == derekslager.xword.Direction.ACROSS && square.across) ||
                 (this.direction == derekslager.xword.Direction.DOWN && square.down)) {
-                this.setPosition(column, row);
+                this.setPosition(column, row, true);
                 return;
             }
         }
@@ -305,6 +333,8 @@ derekslager.xword.Game.prototype.changeDirection = function() {
         this.direction === derekslager.xword.Direction.ACROSS ?
         derekslager.xword.Direction.DOWN :
         derekslager.xword.Direction.ACROSS;
+
+    this.setPosition(this.x, this.y, true);
 
     this.dispatchEvent(derekslager.xword.Game.EventType.DIRECTION_CHANGED);
     this.checkForClueChanged(previousClue);
@@ -326,7 +356,7 @@ derekslager.xword.Game.prototype.getCurrentSquare = function() {
 };
 
 /**
- * Retrieve the cells for the current word, in no particular order.
+ * Retrieve the cells for the current word in order.
  * @return {Array.<derekslager.xword.Square>}
  */
 derekslager.xword.Game.prototype.getCurrentWordSquares = function() {
@@ -343,6 +373,7 @@ derekslager.xword.Game.prototype.getCurrentWordSquares = function() {
             if (!square) break;
             squares.push(square);
         }
+        squares.sort(function(s1, s2) { return s1.column - s2.column; });
     } else {
         for (var i = this.y + 1; i < this.crossword.height; i++) {
             var square = this.getSquare(this.x, i);
@@ -354,6 +385,7 @@ derekslager.xword.Game.prototype.getCurrentWordSquares = function() {
             if (!square) break;
             squares.push(square);
         }
+        squares.sort(function(s1, s2) { return s1.row - s2.row; });
     }
     return squares;
 };
@@ -365,6 +397,7 @@ derekslager.xword.Game.EventType = {
     CLUE_CHANGED: 'word',
     POSITION_CHANGED: 'position',
     DIRECTION_CHANGED: 'direction',
+    SQUARE_VALUE_CHANGED: 'change',
     TIMER_TICK: 'tick'
 };
 
