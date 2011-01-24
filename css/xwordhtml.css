@@ -8,6 +8,11 @@ body {
     font-size: 14px;
 }
 
+#dropzone {
+    border: 4px dotted silver;
+    padding: 20px;
+}
+
 .metadata {
     font-size: small;
 }
@@ -75,6 +80,7 @@ body {
 .c div {
     padding: 3px;
     border-radius: 6px;
+    -moz-border-radius: 6px;
     cursor: default;
 }
 

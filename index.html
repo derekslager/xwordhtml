@@ -1,6 +1,6 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<!DOCTYPE html>
 
-<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<html lang="en">
 
   <head>
     <title>Across Lite HTML</title>
@@ -13,11 +13,20 @@
   </head>
 
   <body>
-    <div id="dropzone" style="height: 200px;">
-      Drop a .PUZ file here, and I'll make you a crossword!
+    <div id="dropzone" style="height: 200px">
+      <h1>HTML5 Across Lite Reader</h1>
+      <p><strong>Simply drag &amp; drop a <tt>.puz</tt> file
+      here</strong>, and I'll make you a crossword. No files will be
+      sent to the server, this is entirely done using your modern Web
+      browser. Note that this only currently works with the following
+      HTML5-compatible browsers:</p>
+      <ul>
+        <li>Google Chrome 4+</li>
+        <li>Mozilla Firefox 3.6+</li>
+      </ul>
     </div>
-    <!-- <img src="html5-badge-h-storage.png" alt="HTML5" /> -->
-    <script type="text/javascript" src="http://nullptr:9810/compile?id=xwordhtml&amp;mode=RAW"></script>
+    <script type="text/javascript" src="js/xw.js"></script>
+    <!-- <script type="text/javascript" src="http://nullptr:9810/compile?id=xwordhtml&amp;mode=RAW"></script> -->
     <script type="text/javascript">
       var app = new derekslager.xword.XwordHtml();
       app.load();
