@@ -34,8 +34,14 @@ derekslager.xword.Game = function(crossword) {
     /** @type {number} */
     this.y = 0;
 
-    this.moveRight();
-    this.moveLeft();
+    while (!this.getCurrentSquare()) {
+        if (this.x < this.crossword.width - 1) {
+            this.x++;
+        } else {
+            this.x = 0;
+            this.y += 1;
+        }
+    }
 
     /**
      * Tracks how much time the puzzle has taken (ms).
