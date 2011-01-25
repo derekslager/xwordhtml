@@ -276,7 +276,6 @@ derekslager.xword.XwordHtml.prototype.onDrop = function(e) {
     var output = [];
     for (var i = 0, file; file = files[i]; i++) {
         var puzzle = this.dom.createDom('div', 'puzzle');
-        // puzzle.appendChild(this.dom.createDom('h1', null, file.name));
 
         var reader = new FileReader();
         reader.onloadend = goog.bind(this.onLoadEnd, this, puzzle);
@@ -344,7 +343,7 @@ derekslager.xword.XwordHtml.prototype.onToolbarAction = function(game, e) {
         } else {
             game.startTimer();
         }
-    } else if (action === 'show-notebook') {
+    } else if (action === 'show-notepad') {
         alert(game.crossword.notes);
     } else {
         this.logger.warning('Unhandled: ' + action);
@@ -384,10 +383,10 @@ derekslager.xword.XwordHtml.prototype.renderCrossword = function(container, cros
     toolbar.addChild(check, true);
     toolbar.addChild(reveal, true);
 
-    // Show the "notebook" button if notes are present.
+    // Show the "notepad" button if notes are present.
     if (crossword.notes) {
-        var notes = new goog.ui.ToolbarButton('Notebook');
-        notes.setModel('show-notebook');
+        var notes = new goog.ui.ToolbarButton('Notepad');
+        notes.setModel('show-notepad');
         toolbar.addChild(notes, true);
     }
 
@@ -494,6 +493,8 @@ derekslager.xword.XwordHtml.prototype.renderCrossword = function(container, cros
     this.update(game);
     table.focus();
 
+    this.highlightClue(across.firstChild);
+
     game.startTimer();
 };
 
@@ -540,6 +541,14 @@ derekslager.xword.XwordHtml.prototype.onClueChanged = function(e) {
     var clue = this.dom.getElement(this.getClueId(e.clue));
 
     goog.dom.classes.remove(previousClue, 'sc');
+
+    this.highlightClue(clue);
+};
+
+/**
+ * @param {Element} clue
+ */
+derekslager.xword.XwordHtml.prototype.highlightClue = function(clue) {
     goog.dom.classes.add(clue, 'sc');
 
     // Center the clue in its container.
@@ -650,6 +659,12 @@ derekslager.xword.XwordHtml.prototype.onCrosswordKey = function(game, e) {
     } else if (e.keyCode == goog.events.KeyCodes.LEFT) {
         this.beforeChange(game);
         game.moveLeft();
+    } else if (e.keyCode == goog.events.KeyCodes.HOME) {
+        this.beforeChange(game);
+        game.moveToBeginningOfWord();
+    } else if (e.keyCode == goog.events.KeyCodes.END) {
+        this.beforeChange(game);
+        game.moveToEndOfWord();
     } else if (e.keyCode == goog.events.KeyCodes.TAB || e.keyCode == goog.events.KeyCodes.ENTER) {
         this.beforeChange(game);
         if (e.shiftKey) {

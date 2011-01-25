@@ -189,9 +189,35 @@ derekslager.xword.Game.prototype.setPosition = function(column, row, opt_moveToE
 };
 
 /**
- * Move up, skipping past black squares.
+ * @param {derekslager.xword.Direction} direction The direction we're
+ * moving in.
+ * @param {function()} f The function which actually performs the
+ * movement.
+ */
+derekslager.xword.Game.prototype.move = function(direction, f) {
+    if (this.direction != direction) {
+        this.changeDirection();
+        if (this.getCurrentSquare().value) {
+            // If the square is filled, we move even when changing
+            // direction.
+            f.call(this);
+        }
+    } else {
+        f.call(this);
+    }
+};
+
+/**
+ * Move up.
  */
 derekslager.xword.Game.prototype.moveUp = function() {
+    this.move(derekslager.xword.Direction.DOWN, this.moveUpSimple);
+};
+
+/**
+ * Move up, skipping past black squares.
+ */
+derekslager.xword.Game.prototype.moveUpSimple = function() {
     var y = this.y;
     while (y-- > 0) {
         if (this.getSquare(this.x, y)) {
@@ -202,9 +228,16 @@ derekslager.xword.Game.prototype.moveUp = function() {
 };
 
 /**
- * Move down, skipping past black squares.
+ * Move down.
  */
 derekslager.xword.Game.prototype.moveDown = function() {
+    this.move(derekslager.xword.Direction.DOWN, this.moveDownSimple);
+};
+
+/**
+ * Move down, skipping past black squares.
+ */
+derekslager.xword.Game.prototype.moveDownSimple = function() {
     var y = this.y;
     var max = this.crossword.height - 1;
     while (y++ < max) {
@@ -216,9 +249,16 @@ derekslager.xword.Game.prototype.moveDown = function() {
 };
 
 /**
- * Move left, skipping past black squares.
+ * Move left.
  */
 derekslager.xword.Game.prototype.moveLeft = function() {
+    this.move(derekslager.xword.Direction.ACROSS, this.moveLeftSimple);
+};
+
+/**
+ * Move left, skipping past black squares.
+ */
+derekslager.xword.Game.prototype.moveLeftSimple = function() {
     var x = this.x;
     while (x-- > 0) {
         if (this.getSquare(x, this.y)) {
@@ -229,9 +269,16 @@ derekslager.xword.Game.prototype.moveLeft = function() {
 };
 
 /**
- * Move right, skipping past black squares.
+ * Move right.
  */
 derekslager.xword.Game.prototype.moveRight = function() {
+    this.move(derekslager.xword.Direction.ACROSS, this.moveRightSimple);
+};
+
+/**
+ * Move right, skipping past black squares.
+ */
+derekslager.xword.Game.prototype.moveRightSimple = function() {
     var x = this.x;
     var max = this.crossword.width - 1;
     while (x++ < max) {
@@ -240,6 +287,23 @@ derekslager.xword.Game.prototype.moveRight = function() {
             break;
         }
     }
+};
+
+/**
+ * Move to the beginning of the current word.
+ */
+derekslager.xword.Game.prototype.moveToBeginningOfWord = function() {
+    var square = this.getCurrentWordSquares()[0];
+    this.setPosition(square.column, square.row);
+};
+
+/**
+ * Move to the end of the current word.
+ */
+derekslager.xword.Game.prototype.moveToEndOfWord = function() {
+    var squares = this.getCurrentWordSquares();
+    var square = squares[squares.length - 1];
+    this.setPosition(square.column, square.row);
 };
 
 /**
@@ -258,9 +322,40 @@ derekslager.xword.Game.prototype.movePrevious = function() {
 };
 
 /**
- * Move to the next cell, if possible (after typing a letter).
+ * Move to the next cell after typing a letter (the next blank cell in
+ * the word, including cycling (Across Lite style).
  */
 derekslager.xword.Game.prototype.moveNext = function() {
+    var squares = this.getCurrentWordSquares();
+    if (this.direction === derekslager.xword.Direction.ACROSS) {
+        var firstColumn = squares[0].column;
+        var offset = this.x - firstColumn;
+        for (var i = 0; i < squares.length; i++) {
+            var nextX = ((i + offset + 1) % squares.length);
+            if (!squares[nextX].value) {
+                this.setPosition(firstColumn + nextX, this.y);
+                return;
+            }
+        }
+        this.moveNextNoCycle();
+    } else {
+        var firstRow = squares[0].row;
+        var offset = this.y - firstRow;
+        for (var i = 0; i < squares.length; i++) {
+            var nextY = (i + 1 + offset) % squares.length;
+            if (!squares[nextY].value) {
+                this.setPosition(this.x, firstRow + nextY);
+                return;
+            }
+        }
+        this.moveNextNoCycle();
+    }
+};
+
+/**
+ * Move to the next cell, if possible (after typing a letter).
+ */
+derekslager.xword.Game.prototype.moveNextNoCycle = function() {
     if (this.direction === derekslager.xword.Direction.ACROSS) {
         if (this.x < this.crossword.width - 1 && this.getSquare(this.x + 1, this.y)) {
             this.setPosition(this.x + 1, this.y);
@@ -340,7 +435,8 @@ derekslager.xword.Game.prototype.changeDirection = function() {
         derekslager.xword.Direction.DOWN :
         derekslager.xword.Direction.ACROSS;
 
-    this.setPosition(this.x, this.y, true);
+    // This will cause the cursor to reset to the first empty clue.
+    // this.setPosition(this.x, this.y, true);
 
     this.dispatchEvent(derekslager.xword.Game.EventType.DIRECTION_CHANGED);
     this.checkForClueChanged(previousClue);
