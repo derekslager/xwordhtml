@@ -30,6 +30,7 @@ goog.require('goog.style');
 
 goog.require('goog.ui.MenuItem');
 goog.require('goog.ui.Toolbar');
+goog.require('goog.ui.ToolbarButton');
 goog.require('goog.ui.ToolbarMenuButton');
 goog.require('goog.ui.ToolbarToggleButton');
 
@@ -79,13 +80,27 @@ derekslager.xword.XwordHtml.parseShort = function(s) {
 };
 
 /**
+ * {Object.<number, number>}
+ */
+derekslager.xword.XwordHtml.iso88591toUnicode =
+    {128:8364, 129:65533, 130:8218, 131:402, 132:8222, 133:8230, 134:8224,
+     135:8225, 136:710, 137:8240, 138:352, 139:8249, 140:338, 141:65533,
+     142:381, 143:65533, 144:65533, 145:8216, 146:8217, 147:8220, 148:8221,
+     149:8226, 150:8211, 151:8212, 152:732, 153:8482, 154:353, 155:8250,
+     156:339, 157:65533, 158:382, 159:376};
+
+/**
  * @param {string} s A binary string with characters encoded as
- * ISO-8859-1.
+ * ISO 8859-1 (latin1).
  * @return {string} A Unicode string.
  */
 derekslager.xword.XwordHtml.decodeIso88591 = function(s) {
-    // TODO(derek): perform decoding of extended chars
-    return s;
+    var cs = [];
+    for (var i = 0; i < s.length; i++) {
+        var c = s.charCodeAt(i);
+        cs.push(String.fromCharCode(derekslager.xword.XwordHtml.iso88591toUnicode[c] || c));
+    }
+    return cs.join('');
 };
 
 /**
@@ -329,6 +344,8 @@ derekslager.xword.XwordHtml.prototype.onToolbarAction = function(game, e) {
         } else {
             game.startTimer();
         }
+    } else if (action === 'show-notebook') {
+        alert(game.crossword.notes);
     } else {
         this.logger.warning('Unhandled: ' + action);
     }
@@ -366,6 +383,14 @@ derekslager.xword.XwordHtml.prototype.renderCrossword = function(container, cros
 
     toolbar.addChild(check, true);
     toolbar.addChild(reveal, true);
+
+    // Show the "notebook" button if notes are present.
+    if (crossword.notes) {
+        var notes = new goog.ui.ToolbarButton('Notebook');
+        notes.setModel('show-notebook');
+        toolbar.addChild(notes, true);
+    }
+
     toolbar.addChild(pause, true);
 
     toolbar.render(container);
@@ -625,7 +650,7 @@ derekslager.xword.XwordHtml.prototype.onCrosswordKey = function(game, e) {
     } else if (e.keyCode == goog.events.KeyCodes.LEFT) {
         this.beforeChange(game);
         game.moveLeft();
-    } else if (e.keyCode == goog.events.KeyCodes.TAB) {
+    } else if (e.keyCode == goog.events.KeyCodes.TAB || e.keyCode == goog.events.KeyCodes.ENTER) {
         this.beforeChange(game);
         if (e.shiftKey) {
             game.previousWord();
