@@ -661,7 +661,8 @@ derekslager.xword.XwordHtml.prototype.onCrosswordKey = function(game, e) {
 
     if (e.keyCode === goog.events.KeyCodes.SPACE) {
         this.beforeChange(game);
-        game.changeDirection();
+        game.setSquareValue(game.getCurrentSquare(), '');
+        game.moveNextNoCycle();
     } else if (!e.ctrlKey && !e.altKey && !e.metaKey &&
                e.keyCode >= goog.events.KeyCodes.A &&
                e.keyCode <= goog.events.KeyCodes.Z) {
@@ -670,23 +671,64 @@ derekslager.xword.XwordHtml.prototype.onCrosswordKey = function(game, e) {
         game.moveNext();
     } else if (e.keyCode == goog.events.KeyCodes.UP) {
         this.beforeChange(game);
-        game.moveUp();
+        if (e.shiftKey) {
+            game.previousWord();
+        } else if (e.ctrlKey) {
+            if (game.direction === derekslager.xword.Direction.ACROSS) {
+                game.changeDirection();
+            }
+        } else {
+            game.moveUp();
+        }
     } else if (e.keyCode == goog.events.KeyCodes.RIGHT) {
         this.beforeChange(game);
-        game.moveRight();
+        if (e.shiftKey) {
+            game.nextWord();
+        } else if (e.ctrlKey) {
+            if (game.direction === derekslager.xword.Direction.DOWN) {
+                game.changeDirection();
+            }
+        } else {
+            game.moveRight();
+        }
     } else if (e.keyCode == goog.events.KeyCodes.DOWN) {
         this.beforeChange(game);
-        game.moveDown();
+        if (e.shiftKey) {
+            game.nextWord();
+        } else if (e.ctrlKey) {
+            if (game.direction === derekslager.xword.Direction.ACROSS) {
+                game.changeDirection();
+            }
+        } else {
+            game.moveDown();
+        }
     } else if (e.keyCode == goog.events.KeyCodes.LEFT) {
         this.beforeChange(game);
-        game.moveLeft();
+        if (e.shiftKey) {
+            game.previousWord();
+        } else if (e.ctrlKey) {
+            if (game.direction === derekslager.xword.Direction.DOWN) {
+                game.changeDirection();
+            }
+        } else {
+            game.moveLeft();
+        }
     } else if (e.keyCode == goog.events.KeyCodes.HOME) {
         this.beforeChange(game);
-        game.moveToBeginningOfWord();
+        if (e.shiftKey) {
+            game.moveToFirstSquare();
+        } else {
+            game.moveToBeginningOfWord();
+        }
     } else if (e.keyCode == goog.events.KeyCodes.END) {
         this.beforeChange(game);
-        game.moveToEndOfWord();
-    } else if (e.keyCode == goog.events.KeyCodes.TAB || e.keyCode == goog.events.KeyCodes.ENTER) {
+        if (e.shiftKey) {
+            game.moveToLastSquare();
+        } else {
+            game.moveToEndOfWord();
+        }
+    } else if (e.keyCode == goog.events.KeyCodes.TAB ||
+               e.keyCode == goog.events.KeyCodes.ENTER) {
         this.beforeChange(game);
         if (e.shiftKey) {
             game.previousWord();

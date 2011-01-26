@@ -34,14 +34,8 @@ derekslager.xword.Game = function(crossword) {
     /** @type {number} */
     this.y = 0;
 
-    while (!this.getCurrentSquare()) {
-        if (this.x < this.crossword.width - 1) {
-            this.x++;
-        } else {
-            this.x = 0;
-            this.y += 1;
-        }
-    }
+    // Start on the first square, obviously.
+    this.moveToFirstSquare();
 
     /**
      * Tracks how much time the puzzle has taken (ms).
@@ -85,7 +79,6 @@ derekslager.xword.Game.prototype.timerTick = function(e) {
 
 /**
  * Retrieves the clue for the current square, if available.
- * TODO(derek): make sure unkeyed square are properly handled
  * @param {derekslager.xword.Square} square
  * @param {derekslager.xword.Direction} direction The current
  * direction (that is, you want the clue from the word in the opposite
@@ -93,9 +86,18 @@ derekslager.xword.Game.prototype.timerTick = function(e) {
  * @return {derekslager.xword.Clue}
  */
 derekslager.xword.Game.prototype.getClue = function(square, direction) {
-    return (direction == derekslager.xword.Direction.ACROSS ?
-            this.getAcrossWordSquares(square)[0].acrossClue :
-            this.getDownWordSquares(square)[0].downClue);
+    if (direction == derekslager.xword.Direction.ACROSS) {
+        var squares = this.getAcrossWordSquares(square);
+        if (squares && squares.length) {
+            return squares[0].acrossClue;
+        }
+    } else {
+        var squares = this.getDownWordSquares(square);
+        if (squares && squares.length) {
+            return squares[0].downClue;
+        }
+    }
+    return null;
 };
 
 /**
@@ -129,7 +131,7 @@ derekslager.xword.Game.prototype.setDirection = function(direction) {
 /**
  * @param {derekslager.xword.Clue} previousClue
  * @param {derekslager.xword.Clue} clue
- * @param {derekslager.xword.EventType} eventType
+ * @param {derekslager.xword.Game.EventType} eventType
  */
 derekslager.xword.Game.prototype.dispatchClueChange = function(previousClue, clue, eventType) {
     if (previousClue.square.column != clue.square.column ||
@@ -184,8 +186,11 @@ derekslager.xword.Game.prototype.setPosition = function(column, row, opt_moveToE
     var previousX = this.x;
     var previousY = this.y;
 
-    var previousClue = this.getCurrentClue();
-    var previousCrossingClue = this.getCurrentCrossingClue();
+    // Current position valid?
+    var previousPositionValid = this.getSquare(previousX, previousY);
+
+    var previousClue = previousPositionValid && this.getCurrentClue();
+    var previousCrossingClue = previousPositionValid && this.getCurrentCrossingClue();
 
     this.x = column;
     this.y = row;
@@ -203,7 +208,7 @@ derekslager.xword.Game.prototype.setPosition = function(column, row, opt_moveToE
         }
     }
 
-    if (previousX != this.x || previousY != this.y) {
+    if (previousPositionValid && previousX != this.x || previousY != this.y) {
         var event = new goog.events.Event(derekslager.xword.Game.EventType.POSITION_CHANGED);
         event.previousColumn = previousX;
         event.previousRow = previousY;
@@ -214,6 +219,34 @@ derekslager.xword.Game.prototype.setPosition = function(column, row, opt_moveToE
         this.checkForClueChanged(previousClue);
         this.checkForCrossingClueChanged(previousCrossingClue);
     }
+};
+
+derekslager.xword.Game.prototype.moveToFirstSquare = function() {
+    var x = 0;
+    var y = 0;
+    while (!this.getSquare(x, y)) {
+        if (x < this.crossword.width - 1) {
+            x++;
+        } else {
+            x = 0;
+            y += 1;
+        }
+    }
+    this.setPosition(x, y);
+};
+
+derekslager.xword.Game.prototype.moveToLastSquare = function() {
+    var x = this.crossword.width - 1;
+    var y = this.crossword.height - 1;
+    while (!this.getSquare(x, y)) {
+        if (x > 0) {
+            x--;
+        } else {
+            x = this.crossword.width - 1;
+            y -= 1;
+        }
+    }
+    this.setPosition(x, y);
 };
 
 /**
