@@ -92,6 +92,10 @@ body {
     background-color: yellow;
 }
 
+.scc, .c .scc:hover {
+    background-color: ivory;
+}
+
 .circled {
     border: 1px solid black;
     border-radius: 15px;

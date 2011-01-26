@@ -240,6 +240,8 @@ derekslager.xword.XwordHtml.prototype.onLoadEnd = function(puzzle, e) {
                     clue.text = crossword.clues[clueIndex++];
                     clue.square = square;
                     crossword.across.push(clue);
+
+                    square.acrossClue = clue;
                 }
 
                 if (square.down) {
@@ -249,6 +251,8 @@ derekslager.xword.XwordHtml.prototype.onLoadEnd = function(puzzle, e) {
                     clue.text = crossword.clues[clueIndex++];
                     clue.square = square;
                     crossword.down.push(clue);
+
+                    square.downClue = clue;
                 }
             }
         }
@@ -434,6 +438,9 @@ derekslager.xword.XwordHtml.prototype.renderCrossword = function(container, cros
     this.handler.listen(game,
                         derekslager.xword.Game.EventType.CLUE_CHANGED,
                         this.onClueChanged);
+    this.handler.listen(game,
+                        derekslager.xword.Game.EventType.CROSSING_CLUE_CHANGED,
+                        this.onCrossingClueChanged);
 
     this.handler.listen(game,
                         derekslager.xword.Game.EventType.SQUARE_VALUE_CHANGED,
@@ -493,7 +500,8 @@ derekslager.xword.XwordHtml.prototype.renderCrossword = function(container, cros
     this.update(game);
     table.focus();
 
-    this.highlightClue(across.firstChild);
+    this.highlightClue(/** @type {Element} */ (across.firstChild), 'sc');
+    this.highlightClue(/** @type {Element} */ (down.firstChild), 'scc');
 
     game.startTimer();
 };
@@ -534,7 +542,7 @@ derekslager.xword.XwordHtml.prototype.getClueId = function(clue) {
  */
 derekslager.xword.XwordHtml.prototype.onClueChanged = function(e) {
     var game = e.target;
-    this.logger.fine('clue changed in ' + game.crossword.title);
+    this.logger.fine('clue changed');
 
     // Find the clue.
     var previousClue = this.dom.getElement(this.getClueId(e.previousClue));
@@ -542,14 +550,27 @@ derekslager.xword.XwordHtml.prototype.onClueChanged = function(e) {
 
     goog.dom.classes.remove(previousClue, 'sc');
 
-    this.highlightClue(clue);
+    this.highlightClue(clue, 'sc');
+};
+
+derekslager.xword.XwordHtml.prototype.onCrossingClueChanged = function(e) {
+    var game = e.target;
+    this.logger.fine('crossing clue changed');
+
+    var previousClue = this.dom.getElement(this.getClueId(e.previousClue));
+    var clue = this.dom.getElement(this.getClueId(e.clue));
+
+    goog.dom.classes.remove(previousClue, 'scc');
+
+    this.highlightClue(clue, 'scc');
 };
 
 /**
  * @param {Element} clue
+ * @param {string} className
  */
-derekslager.xword.XwordHtml.prototype.highlightClue = function(clue) {
-    goog.dom.classes.add(clue, 'sc');
+derekslager.xword.XwordHtml.prototype.highlightClue = function(clue, className) {
+    goog.dom.classes.add(clue, className);
 
     // Center the clue in its container.
     var parent = /** @type {Element} */ (clue.parentNode);
