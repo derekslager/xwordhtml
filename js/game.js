@@ -157,9 +157,12 @@ derekslager.xword.Game.prototype.checkForClueChanged = function(previousClue) {
  * @param {derekslager.xword.Clue} previousCrossingClue
  */
 derekslager.xword.Game.prototype.checkForCrossingClueChanged = function(previousCrossingClue) {
-    this.dispatchClueChange(previousCrossingClue,
-                            this.getCurrentCrossingClue(),
-                            derekslager.xword.Game.EventType.CROSSING_CLUE_CHANGED);
+    var crossingClue = this.getCurrentCrossingClue();
+    if (crossingClue) {
+        this.dispatchClueChange(previousCrossingClue,
+                                crossingClue,
+                                derekslager.xword.Game.EventType.CROSSING_CLUE_CHANGED);
+    }
 };
 
 /**

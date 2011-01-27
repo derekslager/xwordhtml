@@ -105,3 +105,7 @@ body {
 .bad .a {
     color: red;
 }
+
+.rebus .a {
+    font-size: 50%;
+}

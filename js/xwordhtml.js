@@ -28,7 +28,10 @@ goog.require('goog.string.Unicode');
 goog.require('goog.string');
 goog.require('goog.style');
 
+goog.require('goog.Timer');
+
 goog.require('goog.ui.MenuItem');
+goog.require('goog.ui.Prompt');
 goog.require('goog.ui.Toolbar');
 goog.require('goog.ui.ToolbarButton');
 goog.require('goog.ui.ToolbarMenuButton');
@@ -62,11 +65,18 @@ derekslager.xword.XwordHtml = function() {
 derekslager.xword.XwordHtml.prototype.timer;
 
 /**
+ * @type {goog.ui.Prompt}
+ */
+derekslager.xword.XwordHtml.prototype.rebusPrompt;
+
+/**
  * @param {goog.events.Event} e
  */
 derekslager.xword.XwordHtml.prototype.onDragOver = function(e) {
-    e.target.style.backgroundColor = 'red';
-    e.target.style.color = 'white';
+    var zone = e.currentTarget;
+
+    zone.style.backgroundColor = 'red';
+    zone.style.color = 'white';
 
     e.stopPropagation();
     e.preventDefault();
@@ -156,6 +166,8 @@ derekslager.xword.XwordHtml.prototype.onLoadEnd = function(puzzle, e) {
         crossword.notes = derekslager.xword.XwordHtml.readString(result, stringIndex);
 
         var circledClues = {};
+        var rebusIndices = {};
+        var rebusValues = [];
 
         // Having read all the strings, we should be either at EOF or
         // we'll have extra sections.
@@ -183,7 +195,29 @@ derekslager.xword.XwordHtml.prototype.onLoadEnd = function(puzzle, e) {
                         circledClues[c] = true;
                     }
                 }
+            } else if (sectionName == 'GRBS') {
+                // Section containing non-0 entries for rebus squares.
+                for (var c = 0; c < length; c++) {
+                    var cc = result.charCodeAt(dataIndex + c);
+                    if (cc) {
+                        rebusIndices[c] = cc - 1;
+                    }
+                }
+            } else if (sectionName == 'RTBL') {
+                // Rebus solutions, 2 character index, colon, value, semicolon.
+                // " 0:FOO; 1:BAR;10:BAZ;"
+                this.logger.fine(result.substr(dataIndex, length));
+                var rebusSolutions = result.substr(dataIndex, length).split(';');
+                for (var r = 0; r < rebusSolutions.length; r++) {
+                    var rv = rebusSolutions[r];
+                    if (rv) {
+                        var rebusIndex = parseInt(rv.substr(0, 2), 10);
+                        var rebusValue = rv.substring(3);
+                        rebusValues[rebusIndex] = rebusValue;
+                    }
+                }
             }
+
             index += (length + 9);
         }
 
@@ -202,14 +236,19 @@ derekslager.xword.XwordHtml.prototype.onLoadEnd = function(puzzle, e) {
             }
         }
 
-        // Assign numbers.
+        // Assign numbers, circles, rebuses, etc.
         var number = 1;
         for (i = 0; i < crossword.height; i++) {
             for (var j = 0; j < crossword.width; j++) {
                 var square = crossword.squares[i][j];
                 if (!square) continue;
 
-                square.circled = circledClues[(i * crossword.width) + j];
+                var totalIndex = (i * crossword.width) + j;
+                square.circled = circledClues[totalIndex];
+                var rebusIndex = rebusIndices[totalIndex];
+                if (rebusIndex) {
+                    square.rebus = rebusValues[rebusIndex];
+                }
 
                 if ((j === 0 || !crossword.squares[i][j - 1]) &&
                     (j + 1 < crossword.width && crossword.squares[i][j + 1])) {
@@ -302,7 +341,7 @@ derekslager.xword.XwordHtml.prototype.checkSquare = function(square) {
     }
     var cell = this.getCell(square);
     var value = this.getCellValue(cell);
-    var good = square.answer === value;
+    var good = (square.rebus && square.rebus === value) || square.answer === value;
     if (!good) {
         goog.dom.classes.add(cell, 'bad');
     }
@@ -318,12 +357,12 @@ derekslager.xword.XwordHtml.prototype.onToolbarAction = function(game, e) {
     var action = /** @type {string} */ (item.getModel());
     if (action === 'reveal-letter') {
         var square = game.getCurrentSquare();
-        game.setSquareValue(square, square.answer);
+        game.setSquareValue(square, square.rebus || square.answer);
     } else if (action === 'reveal-word') {
         var squares = game.getCurrentWordSquares();
         for (var i = 0; i < squares.length; i++) {
             var square = squares[i];
-            game.setSquareValue(square, square.answer);
+            game.setSquareValue(square, square.rebus || square.answer);
         }
     } else if (action === 'check-letter') {
         var square = game.getCurrentSquare();
@@ -341,6 +380,8 @@ derekslager.xword.XwordHtml.prototype.onToolbarAction = function(game, e) {
         if (allOk) {
             window.alert('You solved the puzzle!');
         }
+    } else if (action === 'rebus-entry') {
+        this.showRebusPrompt(game);
     } else if (action === 'pause-timer') {
         if (e.target.isChecked()) {
             game.stopTimer();
@@ -381,11 +422,16 @@ derekslager.xword.XwordHtml.prototype.renderCrossword = function(container, cros
     reveal.addItem(new goog.ui.MenuItem('Reveal Letter', 'reveal-letter', this.dom));
     reveal.addItem(new goog.ui.MenuItem('Reveal Word', 'reveal-word', this.dom));
 
+    var rebus = new goog.ui.ToolbarButton('Rebus');
+    rebus.setModel('rebus-entry');
+    rebus.setTooltip('Enter multiple letters into a single square.');
+
     var pause = new goog.ui.ToolbarToggleButton('Pause Timer', undefined, this.dom);
     pause.setModel('pause-timer');
 
     toolbar.addChild(check, true);
     toolbar.addChild(reveal, true);
+    toolbar.addChild(rebus, true);
 
     // Show the "notepad" button if notes are present.
     if (crossword.notes) {
@@ -642,7 +688,45 @@ derekslager.xword.XwordHtml.prototype.getCellValue = function(cell) {
  */
 derekslager.xword.XwordHtml.prototype.setCellValue = function(cell, value) {
     this.getContentNode(cell).innerHTML = value;
+    if (value.length > 1) {
+        // Rebus.
+        goog.dom.classes.add(cell, 'rebus');
+    } else {
+        goog.dom.classes.remove(cell, 'rebus');
+    }
     goog.dom.classes.remove(cell, 'good', 'bad');
+};
+
+/**
+ * @param {derekslager.xword.Game} game
+ */
+derekslager.xword.XwordHtml.prototype.showRebusPrompt = function(game) {
+    if (!this.rebusPrompt) {
+        this.rebusPrompt =
+            new goog.ui.Prompt('Rebus Entry',
+                               'Enter letters for the current square.',
+                               goog.bind(this.rebusEntryCallback, this, game));
+        this.rebusPrompt.setCols(8);
+    }
+    this.rebusPrompt.setDefaultValue(game.getCurrentSquare().value || '');
+    goog.Timer.callOnce(goog.bind(this.rebusPrompt.setVisible, this.rebusPrompt, true));
+};
+
+/**
+ * @param {derekslager.xword.Game} game
+ * @param {string} value
+ */
+derekslager.xword.XwordHtml.prototype.rebusEntryCallback = function(game, value) {
+    // null means cancel
+    if (value != null) {
+        // TODO(derek): why am I doing so much work here?!
+        this.beforeChange(game);
+        game.setSquareValue(game.getCurrentSquare(), value.substring(0, 8).toUpperCase());
+        game.moveNext();
+        this.update(game);
+    }
+    // No matter what, it'll have stolen focus.
+    this.table.focus();
 };
 
 /**
@@ -744,6 +828,9 @@ derekslager.xword.XwordHtml.prototype.onCrosswordKey = function(game, e) {
             game.movePrevious();
         }
         game.setSquareValue(game.getCurrentSquare(), '');
+    } else if (e.keyCode === goog.events.KeyCodes.INSERT ||
+               e.keyCode === goog.events.KeyCodes.F2) {
+        this.showRebusPrompt(game);
     } else {
         changed = false;
     }
@@ -784,6 +871,10 @@ derekslager.xword.XwordHtml.prototype.update = function(game) {
     this.table.focus();
 };
 
+/**
+ * @param {derekslager.xword.Game} game
+ * @param {goog.events.BrowserEvent} e
+ */
 derekslager.xword.XwordHtml.prototype.onCrosswordClicked = function(game, e) {
     var cell = goog.dom.getAncestorByTagNameAndClass(e.target, goog.dom.TagName.TD);
     if (cell && !goog.dom.classes.has(cell, 'b')) {
@@ -793,12 +884,11 @@ derekslager.xword.XwordHtml.prototype.onCrosswordClicked = function(game, e) {
         var x = cell.cellIndex;
         var y = cell.parentNode.rowIndex;
 
-        // If it's the same cell that was already highlighted, change
-        // direction.
-        if (x === game.x && y === game.y) {
-            game.changeDirection();
-        }
-
+        // TODO(derek): emulate Across Lite -- right click on any
+        // valid square changes direction, but doesn't change
+        // position. Left click on any valid square sets position but
+        // doesn't change direction. Left click plus drag sets
+        // position and changes direction with drag motion.
         game.setPosition(x, y);
 
         this.update(game);

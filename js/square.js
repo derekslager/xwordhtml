@@ -16,9 +16,18 @@ derekslager.xword.Square.prototype.row;
 derekslager.xword.Square.prototype.column;
 
 /**
+ * The answer, or the first letter of the answer if the square is a
+ * rebus.
  * @type {string}
  */
 derekslager.xword.Square.prototype.answer;
+
+/**
+ * The rebus for this square. This take precedence over answer when
+ * present.
+ * @type {string}
+ */
+derekslager.xword.Square.prototype.rebus;
 
 /**
  * The value as entered by the user.
