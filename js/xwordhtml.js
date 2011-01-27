@@ -333,11 +333,11 @@ derekslager.xword.XwordHtml.prototype.onDrop = function(e) {
 /**
  * Checks the provided square for correctness.
  * @param derekslager.xword.Square square
- * @return true if the cell is good.
+ * @return {boolean} Whether or not the cell was good.
  */
 derekslager.xword.XwordHtml.prototype.checkSquare = function(square) {
     if (!square) {
-        return false;
+        return true;
     }
     var cell = this.getCell(square);
     var value = this.getCellValue(cell);
@@ -371,14 +371,17 @@ derekslager.xword.XwordHtml.prototype.onToolbarAction = function(game, e) {
         var squares = game.getCurrentWordSquares();
         goog.array.forEach(squares, this.checkSquare, this);
     } else if (action === 'check-puzzle') {
-        var allOk = false;
+        var allOk = true;
         var rows = game.crossword.squares;
         for (var i = 0; i < rows.length; i++) {
             var checks = goog.array.map(rows[i], this.checkSquare, this);
             allOk = allOk && goog.array.every(checks, goog.functions.identity);
         }
         if (allOk) {
+            game.stopTimer();
             window.alert('You solved the puzzle!');
+        } else {
+            window.alert('Puzzle contains blank or invalid squares.');
         }
     } else if (action === 'rebus-entry') {
         this.showRebusPrompt(game);
