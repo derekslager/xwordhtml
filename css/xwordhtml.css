@@ -1,4 +1,4 @@
-h1, h2 {
+h1, h2, body {
     padding: 0;
     margin: 0;
 }
@@ -10,7 +10,13 @@ body {
 
 #dropzone {
     border: 4px dotted silver;
+    margin: 10px;
     padding: 20px;
+    overflow: auto;
+}
+
+.m {
+    margin: 8px;
 }
 
 .metadata {

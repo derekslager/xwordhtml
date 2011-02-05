@@ -9,6 +9,7 @@ goog.require('goog.debug.LogManager');
 
 goog.require('goog.dom.classes');
 goog.require('goog.dom.DomHelper');
+goog.require('goog.dom.ViewportSizeMonitor');
 
 goog.require('goog.events.EventHandler');
 goog.require('goog.events.EventType');
@@ -57,7 +58,14 @@ derekslager.xword.XwordHtml = function() {
     this.dom = new goog.dom.DomHelper();
     this.handler = new goog.events.EventHandler(this);
     this.dropZone = this.dom.getElement('dropzone');
+
+    this.sizeMonitor = goog.dom.ViewportSizeMonitor.getInstanceForWindow();
+    this.handler.listen(this.sizeMonitor, goog.events.EventType.RESIZE, this.onViewportResize);
+    this.dropZone.style.height = (this.sizeMonitor.getSize().height - derekslager.xword.XwordHtml.viewportOffset) + 'px';
 };
+
+/** @type {number} */
+derekslager.xword.XwordHtml.viewportOffset = 70;
 
 /**
  * @type {Element}
@@ -68,6 +76,11 @@ derekslager.xword.XwordHtml.prototype.timer;
  * @type {goog.ui.Prompt}
  */
 derekslager.xword.XwordHtml.prototype.rebusPrompt;
+
+derekslager.xword.XwordHtml.prototype.onViewportResize = function(e) {
+    var size = e.target.getSize();
+    this.dropZone.style.height = (size.height - derekslager.xword.XwordHtml.viewportOffset) + 'px';
+};
 
 /**
  * @param {goog.events.Event} e
@@ -405,9 +418,14 @@ derekslager.xword.XwordHtml.prototype.onToolbarAction = function(game, e) {
  */
 derekslager.xword.XwordHtml.prototype.renderCrossword = function(container, crossword) {
 
-    container.appendChild(this.dom.createDom('h2', null, crossword.title));
+    var header = this.dom.createDom('div');
+    header.style.padding = '4px 8px';
+    header.style.backgroundColor = '#fafafa';
+    container.appendChild(header);
 
-    container.appendChild(
+    header.appendChild(this.dom.createDom('h2', null, crossword.title));
+
+    header.appendChild(
         this.dom.createDom(
             'div', 'metadata',
             this.dom.createTextNode(crossword.author + ' '),
@@ -448,6 +466,8 @@ derekslager.xword.XwordHtml.prototype.renderCrossword = function(container, cros
     toolbar.render(container);
 
     // Build the grid.
+    var grid = this.dom.createDom('div', 'm');
+
     var table = this.dom.createTable(crossword.height, crossword.width);
     goog.dom.classes.add(table, 'grid');
     table.tabIndex = -1; // make focusable so we can get key events
@@ -510,7 +530,8 @@ derekslager.xword.XwordHtml.prototype.renderCrossword = function(container, cros
 
     this.handler.listen(toolbar, goog.ui.Component.EventType.ACTION, goog.partial(this.onToolbarAction, game));
 
-    container.appendChild(table);
+    grid.appendChild(table);
+    container.appendChild(grid);
 
     // Clues.
     var clues = this.dom.createDom('div', 'clues');
@@ -542,7 +563,7 @@ derekslager.xword.XwordHtml.prototype.renderCrossword = function(container, cros
     clues.appendChild(this.dom.createDom('strong', undefined, 'Down'));
     clues.appendChild(down);
 
-    container.appendChild(clues);
+    grid.appendChild(clues);
 
     // TODO(derek): clean this hot mess up
     this.table = table;
