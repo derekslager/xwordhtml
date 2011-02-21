@@ -2,6 +2,8 @@ goog.provide('derekslager.xword.XwordHtml');
 
 goog.require('goog.array');
 
+goog.require('goog.async.Deferred');
+
 goog.require('goog.debug.Console');
 goog.require('goog.debug.Logger');
 goog.require('goog.debug.Logger.Level');
@@ -17,6 +19,10 @@ goog.require('goog.events.KeyCodes');
 goog.require('goog.events.KeyHandler');
 goog.require('goog.events.KeyHandler.EventType');
 
+goog.require('goog.fs.FileReader');
+goog.require('goog.fs.FileReader.EventType');
+goog.require('goog.fs.FileReader.ReadyState');
+
 goog.require('goog.functions');
 
 goog.require('goog.fx.dom.Scroll');
@@ -31,6 +37,8 @@ goog.require('goog.style');
 
 goog.require('goog.Timer');
 
+goog.require('goog.ui.Dialog');
+goog.require('goog.ui.Dialog.ButtonSet');
 goog.require('goog.ui.MenuItem');
 goog.require('goog.ui.Prompt');
 goog.require('goog.ui.Toolbar');
@@ -83,7 +91,7 @@ derekslager.xword.XwordHtml.prototype.onViewportResize = function(e) {
 };
 
 /**
- * @param {goog.events.Event} e
+ * @param {goog.events.BrowserEvent} e
  */
 derekslager.xword.XwordHtml.prototype.onDragOver = function(e) {
     var zone = e.currentTarget;
@@ -93,6 +101,16 @@ derekslager.xword.XwordHtml.prototype.onDragOver = function(e) {
 
     e.stopPropagation();
     e.preventDefault();
+};
+
+/**
+ * @param {goog.events.BrowserEvent} e
+ */
+derekslager.xword.XwordHtml.prototype.onDragLeave = function(e) {
+    var zone = e.currentTarget;
+
+    zone.style.backgroundColor = '';
+    zone.style.color = '';
 };
 
 /**
@@ -142,8 +160,11 @@ derekslager.xword.XwordHtml.readString = function(s, index) {
  * @param {goog.events.Event} e
  */
 derekslager.xword.XwordHtml.prototype.onLoadEnd = function(puzzle, e) {
-    if (e.target.readyState == FileReader.DONE) {
-        var result = e.target.result;
+    var reader = /** @type {goog.fs.FileReader} */ (e.target);
+    if (reader.getError()) {
+        alert('Unable to read file.');
+    } else {
+        var result = /** @type {string} */ (reader.getResult());
         this.logger.fine('header: ' + result.substr(2, 12));
 
         // TODO(derek): confirm ACROSS&DOWN, throw on error
@@ -163,7 +184,7 @@ derekslager.xword.XwordHtml.prototype.onLoadEnd = function(puzzle, e) {
         /** @const */
         var SOLUTION_OFFSET = 0x34;
 
-        var solution = crossword.solution = result.substr(SOLUTION_OFFSET, width * height);
+        var solution = result.substr(SOLUTION_OFFSET, width * height);
 
         var stringIndex = [SOLUTION_OFFSET + ((width * height) * 2)];
 
@@ -310,9 +331,6 @@ derekslager.xword.XwordHtml.prototype.onLoadEnd = function(puzzle, e) {
         }
 
         this.renderCrossword(puzzle, crossword);
-
-    } else {
-        this.logger.warning('unexpected readyState: ' + e.target.readyState);
     }
 
     this.dom.removeNode(this.dropZone);
@@ -329,18 +347,30 @@ derekslager.xword.XwordHtml.prototype.onDrop = function(e) {
 
     var files = e.getBrowserEvent().dataTransfer.files;
 
-    var output = [];
-    for (var i = 0, file; file = files[i]; i++) {
+    if (files.length === 0) {
+        alert('No files found.');
+    } else {
+        // Grab the first file, ignoring others.
+        var file = files[0];
         var puzzle = this.dom.createDom('div', 'puzzle');
 
-        var reader = new FileReader();
-        reader.onloadend = goog.bind(this.onLoadEnd, this, puzzle);
-
-        // Read file contents.
+        var reader = new goog.fs.FileReader();
+        this.waitForEvent(goog.fs.FileReader.EventType.LOAD_END, reader)
+            .addCallback(goog.bind(this.onLoadEnd, this, puzzle));
         reader.readAsBinaryString(file);
 
         this.dom.insertSiblingAfter(puzzle, this.dropZone);
     }
+};
+
+/**
+ * @param {goog.fs.FileReader.EventType} type
+ * @param {goog.events.EventTarget} target
+ */
+derekslager.xword.XwordHtml.prototype.waitForEvent = function(type, target) {
+    var d = new goog.async.Deferred();
+    goog.events.listenOnce(target, type, d.callback, false, d);
+    return d;
 };
 
 /**
@@ -406,6 +436,17 @@ derekslager.xword.XwordHtml.prototype.onToolbarAction = function(game, e) {
         }
     } else if (action === 'show-notepad') {
         alert(game.crossword.notes);
+    } else if (action === 'help') {
+        if (!this.helpDialog) {
+            this.helpDialog = new goog.ui.Dialog();
+            this.helpDialog.setTitle('Keyboard Shortcuts');
+            this.helpDialog.render();
+            var help = /** @type {Element} */ (this.dom.removeNode(this.dom.getElement('help')));
+            this.helpDialog.getContentElement().appendChild(help);
+            this.helpDialog.setButtonSet(goog.ui.Dialog.ButtonSet.createOk());
+            goog.style.showElement(help, true);
+        }
+        this.helpDialog.setVisible(true);
     } else {
         this.logger.warning('Unhandled: ' + action);
     }
@@ -450,6 +491,9 @@ derekslager.xword.XwordHtml.prototype.renderCrossword = function(container, cros
     var pause = new goog.ui.ToolbarToggleButton('Pause Timer', undefined, this.dom);
     pause.setModel('pause-timer');
 
+    var help = new goog.ui.ToolbarButton('Help');
+    help.setModel('help');
+
     toolbar.addChild(check, true);
     toolbar.addChild(reveal, true);
     toolbar.addChild(rebus, true);
@@ -462,6 +506,7 @@ derekslager.xword.XwordHtml.prototype.renderCrossword = function(container, cros
     }
 
     toolbar.addChild(pause, true);
+    toolbar.addChild(help, true);
 
     toolbar.render(container);
 
@@ -921,6 +966,7 @@ derekslager.xword.XwordHtml.prototype.onCrosswordClicked = function(game, e) {
 
 derekslager.xword.XwordHtml.prototype.load = function() {
     this.handler.listen(this.dropZone, goog.events.EventType.DRAGOVER, this.onDragOver);
+    // this.handler.listen(this.dropZone, goog.events.EventType.DRAGLEAVE, this.onDragLeave);
     this.handler.listen(this.dropZone, goog.events.EventType.DROP, this.onDrop);
     this.logger.fine('Event listeners added.');
 };

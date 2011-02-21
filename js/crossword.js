@@ -30,9 +30,6 @@ derekslager.xword.Crossword.prototype.height;
 derekslager.xword.Crossword.prototype.squares;
 
 /** @type {Array.<string>} */
-derekslager.xword.Crossword.prototype.solution;
-
-/** @type {Array.<string>} */
 derekslager.xword.Crossword.prototype.clues;
 
 /** @type {Array.<derekslager.xword.Clue>} */

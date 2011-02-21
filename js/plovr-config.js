@@ -1,9 +1,10 @@
 {
     "id": "xwordhtml",
-    "paths": ".",
+    "paths": [ ".", "../../closure-library/third_party/closure/goog" ],
     "inputs": "xwordhtml.js",
     "mode": "ADVANCED",
     "level": "VERBOSE",
+    "closure-library": "../../closure-library/closure/goog",
 
     "define": {
         "goog.DEBUG": false

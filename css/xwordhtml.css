@@ -115,3 +115,26 @@ body {
 .rebus .a {
     font-size: 50%;
 }
+
+dl {
+    margin: 0;
+}
+
+#help {
+    font-size: 90%;
+}
+
+.k {
+    text-align: right;
+    padding: 3px 6px;
+}
+
+kbd {
+    padding: 2px 4px;
+    white-space: nowrap;
+    color: #000;
+    background: #eee;
+    border-width: 1px 3px 3px 1px;
+    border-style: solid;
+    border-color: #ccc #aaa #888 #bbb;
+}
