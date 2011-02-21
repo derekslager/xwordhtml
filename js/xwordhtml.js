@@ -60,8 +60,10 @@ derekslager.xword.XwordHtml = function() {
 
     goog.debug.LogManager.getRoot().setLevel(goog.debug.Logger.Level.FINE);
 
-    var console = new goog.debug.Console();
-    console.setCapturing(true);
+    if (goog.DEBUG) {
+        var console = new goog.debug.Console();
+        console.setCapturing(true);
+    }
 
     this.dom = new goog.dom.DomHelper();
     this.handler = new goog.events.EventHandler(this);
@@ -691,13 +693,16 @@ derekslager.xword.XwordHtml.prototype.highlightClue = function(clue, className) 
     var parent = /** @type {Element} */ (clue.parentNode);
     var targetY = (clue.offsetTop - parent.offsetTop) - (parent.offsetHeight / 2);
 
-    var scroll = new goog.fx.dom.Scroll(
+    if (this.scroll) {
+        this.scroll.stop(true);
+    }
+    this.scroll = new goog.fx.dom.Scroll(
         parent,
         [0, parent.scrollTop],
         [0, targetY],
         500,
         goog.fx.easing.easeOut);
-    scroll.play();
+    this.scroll.play();
 };
 
 derekslager.xword.XwordHtml.prototype.onSquareValueChanged = function(e) {
