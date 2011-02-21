@@ -46,6 +46,8 @@ goog.require('goog.ui.ToolbarButton');
 goog.require('goog.ui.ToolbarMenuButton');
 goog.require('goog.ui.ToolbarToggleButton');
 
+goog.require('goog.window');
+
 goog.require('derekslager.xword.Clue');
 goog.require('derekslager.xword.Crossword');
 goog.require('derekslager.xword.Game');
@@ -76,6 +78,12 @@ derekslager.xword.XwordHtml = function() {
 
 /** @type {number} */
 derekslager.xword.XwordHtml.viewportOffset = 70;
+
+/**
+ * Current search term for 'Huh?' menu.
+ * @type {string} 
+ */
+derekslager.xword.XwordHtml.prototype.wtfSearchTerm;
 
 /**
  * @type {Element}
@@ -449,6 +457,12 @@ derekslager.xword.XwordHtml.prototype.onToolbarAction = function(game, e) {
             goog.style.showElement(help, true);
         }
         this.helpDialog.setVisible(true);
+    } else if (action === 'wtf-google') {
+        goog.window.open(
+            'http://www.google.com/search?q=' + encodeURIComponent(this.wtfSearchTerm));
+    } else if (action === 'wtf-xwi') {
+        goog.window.open(
+            'http://www.xwordinfo.com/Finder?word=' + encodeURIComponent(this.wtfSearchTerm));
     } else {
         this.logger.warning('Unhandled: ' + action);
     }
@@ -486,6 +500,16 @@ derekslager.xword.XwordHtml.prototype.renderCrossword = function(container, cros
     reveal.addItem(new goog.ui.MenuItem('Reveal Letter', 'reveal-letter', this.dom));
     reveal.addItem(new goog.ui.MenuItem('Reveal Word', 'reveal-word', this.dom));
 
+    var wtf = new goog.ui.ToolbarMenuButton('Huh?');
+    this.google = new goog.ui.MenuItem('Search Google', 'wtf-google', this.dom);
+    this.google.setEnabled(false);
+    // this.google.setTooltip('Search for the current word on Google.');
+    this.xwordInfo = new goog.ui.MenuItem('Search XWord Info', 'wtf-xwi', this.dom);
+    this.xwordInfo.setEnabled(false);
+    // this.xwordInfo.setTooltip('Find matches for the current word (whole or partial) on XWord Info.');
+    wtf.addItem(this.google);
+    wtf.addItem(this.xwordInfo);
+
     var rebus = new goog.ui.ToolbarButton('Rebus');
     rebus.setModel('rebus-entry');
     rebus.setTooltip('Enter multiple letters into a single square.');
@@ -498,6 +522,7 @@ derekslager.xword.XwordHtml.prototype.renderCrossword = function(container, cros
 
     toolbar.addChild(check, true);
     toolbar.addChild(reveal, true);
+    toolbar.addChild(wtf, true);
     toolbar.addChild(rebus, true);
 
     // Show the "notepad" button if notes are present.
@@ -565,6 +590,14 @@ derekslager.xword.XwordHtml.prototype.renderCrossword = function(container, cros
     this.handler.listen(game,
                         derekslager.xword.Game.EventType.TIMER_TICK,
                         this.onTimerTick);
+
+    // Set enabled/disabled states for Huh? menu.
+    this.handler.listen(game,
+                        [ derekslager.xword.Game.EventType.POSITION_CHANGED,
+                          derekslager.xword.Game.EventType.DIRECTION_CHANGED,
+                          derekslager.xword.Game.EventType.SQUARE_VALUE_CHANGED,
+                          derekslager.xword.Game.EventType.CLUE_CHANGED ],
+                        this.setWtfMenuStates);
 
     this.handler.listen(table,
                         goog.events.EventType.CLICK,
@@ -668,6 +701,35 @@ derekslager.xword.XwordHtml.prototype.onClueChanged = function(e) {
     goog.dom.classes.remove(previousClue, 'sc');
 
     this.highlightClue(clue, 'sc');
+};
+
+/**
+ * @param {goog.events.Event} e
+ */
+derekslager.xword.XwordHtml.prototype.setWtfMenuStates = function(e) {
+    var game = e.target;
+
+    var squares = game.getCurrentWordSquares();
+
+    var searchTerm = '';
+
+    var answered = 0;
+    for (var i = 0; i < squares.length; i++) {
+        var value = squares[i].value;
+        if (value) {
+            searchTerm += value;
+            answered++;
+        } else {
+            searchTerm += '?';
+        }
+    }
+
+    this.wtfSearchTerm = searchTerm;
+
+    // If they answered all the letters, we can search on Google. If
+    // they answered any letter, they can search on XWord Info.
+    this.google.setEnabled(answered == squares.length);
+    this.xwordInfo.setEnabled(answered > 0);
 };
 
 derekslager.xword.XwordHtml.prototype.onCrossingClueChanged = function(e) {
